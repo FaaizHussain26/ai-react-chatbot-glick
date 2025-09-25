@@ -1,17 +1,30 @@
-import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
+import type React from "react"
+
+import { useState, useEffect, useRef } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 
 interface Message {
-  id: number;
-  text: string;
-  sender: "user" | "bot";
-  timestamp: Date;
+  id: number
+  text: string
+  sender: "user" | "bot"
+  timestamp: Date
 }
 
+interface UserInfo {
+  fullName: string
+  email: string
+  phone: string
+}
+
+const API_URL = import.meta.env.VITE_API_URL
+
 export default function ChatWidget() {
-  const [isOpen, setIsOpen] = useState<boolean>(false);
-  const [showPopup, setShowPopup] = useState<boolean>(false);
-  const [hasShownPopup, setHasShownPopup] = useState<boolean>(false);
+  const [isOpen, setIsOpen] = useState<boolean>(false)
+  const [showPopup, setShowPopup] = useState<boolean>(true)
+  const [hasUserInfo, setHasUserInfo] = useState<boolean>(false)
+  const [userInfo, setUserInfo] = useState<UserInfo>({ fullName: "", email: "", phone: "" })
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
@@ -19,107 +32,129 @@ export default function ChatWidget() {
       sender: "bot",
       timestamp: new Date(),
     },
-  ]);
-  const [inputValue, setInputValue] = useState<string>("");
-  const [isTyping, setIsTyping] = useState<boolean>(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  ])
+  const [inputValue, setInputValue] = useState<string>("")
+  const [isTyping, setIsTyping] = useState<boolean>(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Show popup only once after delay if chat hasn't been opened
   useEffect(() => {
-    if (!hasShownPopup && !isOpen) {
-      const timer = setTimeout(() => {
-        setShowPopup(true);
-        setHasShownPopup(true);
-      }, 3000);
+    const timer = setTimeout(() => {
+      setShowPopup(false)
+    }, 3000)
 
-      return () => clearTimeout(timer);
-    }
-  }, [hasShownPopup, isOpen]);
+    return () => clearTimeout(timer)
+  }, []) // Empty dependency array so it only runs once on mount
 
-  // Hide popup when chat opens
   useEffect(() => {
     if (isOpen) {
-      setShowPopup(false);
+      setShowPopup(false)
     }
-  }, [isOpen]);
+  }, [isOpen])
 
-  // Auto scroll to bottom when new messages are added
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    scrollToBottom()
+  }, [messages])
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
 
-  // Bot responses (simple responses for demo)
-  const getBotResponse = (userMessage: string): string => {
-    const message = userMessage.toLowerCase();
+  const getBotResponse = async (userMessage: string): Promise<string> => {
+    try {
+      const response = await fetch(`${API_URL}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: userMessage }],
+          userContext: hasUserInfo
+            ? {
+                name: userInfo.fullName,
+                email: userInfo.email,
+                phone: userInfo.phone,
+              }
+            : null,
+        }),
+      })
 
-    if (
-      message.includes("hello") ||
-      message.includes("hi") ||
-      message.includes("hey")
-    ) {
-      return "Hello! Thanks for reaching out to Glick Roofing. How can I assist you with your roofing needs today?";
-    }
-    if (
-      message.includes("price") ||
-      message.includes("cost") ||
-      message.includes("quote")
-    ) {
-      return "I'd be happy to help you with pricing information! For an accurate quote, I'll need some details about your project. Can you tell me more about what type of roofing work you need?";
-    }
-    if (message.includes("roof") || message.includes("roofing")) {
-      return "Great! We specialize in all types of roofing services including repairs, replacements, and new installations. What specific roofing service are you interested in?";
-    }
-    if (
-      message.includes("contact") ||
-      message.includes("phone") ||
-      message.includes("call")
-    ) {
-      return "You can reach us at our main office for immediate assistance. We're also available for emergency roofing services. Would you like me to connect you with one of our specialists?";
-    }
-    if (message.includes("thank")) {
-      return "You're very welcome! Is there anything else I can help you with regarding your roofing needs?";
-    }
+      if (!response.ok) {
+        throw new Error("Failed to get response")
+      }
 
-    return "Thanks for your message! I'm here to help with any roofing questions you have. Can you provide more details about what you're looking for?";
-  };
+      const data = await response.json()
+      return data.content || "I'm sorry, I couldn't process that request."
+    } catch (error) {
+      console.error("Error getting bot response:", error)
+      return "I'm sorry, I'm having trouble connecting right now. Please try again."
+    }
+  }
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim()) return
 
     const userMessage: Message = {
       id: Date.now(),
       text: inputValue,
       sender: "user",
       timestamp: new Date(),
-    };
+    }
 
-    setMessages((prev) => [...prev, userMessage]);
-    setInputValue("");
-    setIsTyping(true);
+    setMessages((prev) => [...prev, userMessage])
+    const currentInput = inputValue
+    setInputValue("")
+    setIsTyping(true)
 
-    // Simulate bot typing delay
-    setTimeout(() => {
-      const botResponse: Message = {
-        id: Date.now() + 1,
-        text: getBotResponse(inputValue),
-        sender: "bot",
-        timestamp: new Date(),
-      };
+    try {
+      const botResponseText = await getBotResponse(currentInput)
 
-      setMessages((prev) => [...prev, botResponse]);
-      setIsTyping(false);
-    }, 1500);
-  };
+      setTimeout(() => {
+        const botResponse: Message = {
+          id: Date.now() + 1,
+          text: botResponseText,
+          sender: "bot",
+          timestamp: new Date(),
+        }
+
+        setMessages((prev) => [...prev, botResponse])
+        setIsTyping(false)
+      }, 1000)
+    } catch (error) {
+      setTimeout(() => {
+        const errorResponse: Message = {
+          id: Date.now() + 1,
+          text: "I'm sorry, I'm having trouble connecting right now. Please try again.",
+          sender: "bot",
+          timestamp: new Date(),
+        }
+
+        setMessages((prev) => [...prev, errorResponse])
+        setIsTyping(false)
+      }, 1000)
+    }
+  }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
-      handleSendMessage();
+      handleSendMessage()
     }
-  };
+  }
+
+  const handleUserInfoSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (userInfo.fullName.trim() && userInfo.email.trim() && userInfo.phone.trim()) {
+      setHasUserInfo(true)
+      // Update welcome message to include user's name
+      setMessages([
+        {
+          id: 1,
+          text: `Hi ${userInfo.fullName}! My name is Esther. How can I help you today? 🙂`,
+          sender: "bot",
+          timestamp: new Date(),
+        },
+      ])
+    }
+  }
 
   return (
     <>
@@ -135,7 +170,7 @@ export default function ChatWidget() {
           >
             <div
               className="relative rounded-xl border border-gray-200/50 bg-white/80 backdrop-blur-md 
-                      shadow-lg p-4 overflow-hidden"
+                        shadow-lg p-4 overflow-hidden"
             >
               {/* Decorative gradient top border */}
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#03a84e] to-[#0a791e]" />
@@ -144,17 +179,15 @@ export default function ChatWidget() {
               <button
                 onClick={() => setShowPopup(false)}
                 className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center 
-                     rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 
-                     transition-colors text-sm"
+                       rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 
+                       transition-colors text-sm"
               >
                 ×
               </button>
 
               {/* Content */}
               <div className="pt-2">
-                <p className="text-gray-700 text-sm leading-relaxed">
-                  👋 Hi there! Do you have any questions?.
-                </p>
+                <p className="text-gray-700 text-sm leading-relaxed">👋 Hi there! Do you have any questions?</p>
               </div>
             </div>
           </motion.div>
@@ -195,7 +228,7 @@ export default function ChatWidget() {
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
             className="fixed bottom-27 right-6 sm:right-8 w-[90vw] sm:w-[400px] md:w-[450px] h-[600px] 
-                      rounded-lg shadow-xl overflow-hidden z-40 bg-white border border-gray-200"
+                        rounded-lg shadow-xl overflow-hidden z-40 bg-white border border-gray-200"
           >
             <div className="px-6 py-4 bg-gradient-to-r from-[#03a84e] to-[#0a791e] flex flex-row items-center justify-between border-b gap-3">
               <div className="flex items-center gap-3">
@@ -211,9 +244,7 @@ export default function ChatWidget() {
                   <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-green-500 border-2 border-white"></div>
                 </div>
                 <div className="flex flex-col">
-                  <h2 className="text-white text-xl font-medium">
-                    Glick Roofing
-                  </h2>
+                  <h2 className="text-white text-xl font-medium">Glick Roofing</h2>
                   <p className="text-gray-200 text-sm ">AI Support</p>
                 </div>
               </div>
@@ -238,87 +269,143 @@ export default function ChatWidget() {
               </button>
             </div>
             <div className="flex-1 overflow-hidden h-[calc(100%-76px)] flex flex-col">
-              {/* Chat Interface */}
-              <div className="flex-1 overflow-hidden bg-gray-50">
-                <div className="h-full flex flex-col">
-                  {/* Messages area */}
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    {messages.map((message) => (
-                      <div
-                        key={message.id}
-                        className={`flex ${
-                          message.sender === "user"
-                            ? "justify-end"
-                            : "justify-start"
-                        }`}
+              {!hasUserInfo ? (
+                // User Information Form
+                <div className="flex-1 flex items-center justify-center bg-gray-50 p-6">
+                  <div className="w-full max-w-sm">
+                    <div className="text-center mb-6">
+                      <h3 className="text-xl font-semibold text-gray-800 mb-2">Welcome to Glick Roofing!</h3>
+                      <p className="text-gray-600 text-sm">Please provide your information to get started</p>
+                    </div>
+
+                    <form onSubmit={handleUserInfoSubmit} className="space-y-4">
+                      <div>
+                        <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">
+                          Full Name *
+                        </label>
+                        <input
+                          type="text"
+                          id="fullName"
+                          required
+                          value={userInfo.fullName}
+                          onChange={(e) => setUserInfo((prev) => ({ ...prev, fullName: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#03a84e] focus:border-transparent"
+                          placeholder="Enter your full name"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                          Email Address *
+                        </label>
+                        <input
+                          type="email"
+                          id="email"
+                          required
+                          value={userInfo.email}
+                          onChange={(e) => setUserInfo((prev) => ({ ...prev, email: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#03a84e] focus:border-transparent"
+                          placeholder="Enter your email"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                          Phone Number *
+                        </label>
+                        <input
+                          type="tel"
+                          id="phone"
+                          required
+                          value={userInfo.phone}
+                          onChange={(e) => setUserInfo((prev) => ({ ...prev, phone: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#03a84e] focus:border-transparent"
+                          placeholder="Enter your phone number"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full py-3 bg-gradient-to-r from-[#03a84e] to-[#0a791e] text-white rounded-lg hover:from-[#028a42] hover:to-[#086b1a] transition-colors font-medium"
                       >
+                        Start Chat
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              ) : (
+                // Chat Interface
+                <div className="flex-1 overflow-hidden bg-gray-50">
+                  <div className="h-full flex flex-col">
+                    {/* Messages area */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                      {messages.map((message) => (
                         <div
-                          className={`max-w-[80%] p-3 rounded-lg ${
-                            message.sender === "user"
-                              ? "bg-[#03a84e] text-white rounded-br-none"
-                              : "bg-gray-200/80 shadow-sm rounded-bl-none"
-                          }`}
+                          key={message.id}
+                          className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
                         >
-                          <p
-                            className={`text-sm ${
+                          <div
+                            className={`max-w-[80%] p-3 rounded-lg ${
                               message.sender === "user"
-                                ? "text-white"
-                                : "text-gray-700"
+                                ? "bg-[#03a84e] text-white rounded-br-none"
+                                : "bg-gray-200/80 shadow-sm rounded-bl-none"
                             }`}
                           >
-                            {message.text}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-
-                    {/* Typing indicator */}
-                    {isTyping && (
-                      <div className="flex justify-start">
-                        <div className="bg-white shadow-sm rounded-lg rounded-bl-none p-3">
-                          <div className="flex space-x-1">
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                            <div
-                              className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                              style={{ animationDelay: "0.1s" }}
-                            ></div>
-                            <div
-                              className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                              style={{ animationDelay: "0.2s" }}
-                            ></div>
+                            <p className={`text-sm ${message.sender === "user" ? "text-white" : "text-gray-700"}`}>
+                              {message.text}
+                            </p>
                           </div>
                         </div>
-                      </div>
-                    )}
-                    <div ref={messagesEndRef} />
-                  </div>
+                      ))}
 
-                  {/* Input area */}
-                  <div className="p-4 border-t bg-white">
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        placeholder="Type your message..."
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#03a84e] focus:border-transparent"
-                      />
-                      <button
-                        onClick={handleSendMessage}
-                        disabled={!inputValue.trim()}
-                        className="px-4 py-2 bg-gradient-to-r from-[#03a84e] to-[#0a791e] text-white rounded-lg hover:from-[#028a42] hover:to-[#086b1a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Send
-                      </button>
+                      {/* Typing indicator */}
+                      {isTyping && (
+                        <div className="flex justify-start">
+                          <div className="bg-white shadow-sm rounded-lg rounded-bl-none p-3">
+                            <div className="flex space-x-1">
+                              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                              <div
+                                className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                                style={{ animationDelay: "0.1s" }}
+                              ></div>
+                              <div
+                                className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                                style={{ animationDelay: "0.2s" }}
+                              ></div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      <div ref={messagesEndRef} />
+                    </div>
+
+                    {/* Input area */}
+                    <div className="p-4 border-t bg-white">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={inputValue}
+                          onChange={(e) => setInputValue(e.target.value)}
+                          onKeyPress={handleKeyPress}
+                          placeholder="Type your message..."
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#03a84e] focus:border-transparent"
+                        />
+                        <button
+                          onClick={handleSendMessage}
+                          disabled={!inputValue.trim()}
+                          className="px-4 py-2 bg-gradient-to-r from-[#03a84e] to-[#0a791e] text-white rounded-lg hover:from-[#028a42] hover:to-[#086b1a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Send
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
     </>
-  );
+  )
 }
