@@ -1,30 +1,36 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useEffect, useRef } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Send } from "lucide-react";
+import { getChatApiMiddleware } from "@/utils/api";
 
 interface Message {
-  id: number
-  text: string
-  sender: "user" | "bot"
-  timestamp: Date
+  id: number;
+  text: string;
+  sender: "user" | "bot";
+  timestamp: Date;
 }
 
 interface UserInfo {
-  fullName: string
-  email: string
-  phone: string
+  fullName: string;
+  email: string;
+  phone: string;
 }
 
-const API_URL = import.meta.env.VITE_API_URL
+const API_URL = import.meta.env.VITE_API_URL;
 
 export default function ChatWidget() {
-  const [isOpen, setIsOpen] = useState<boolean>(false)
-  const [showPopup, setShowPopup] = useState<boolean>(true)
-  const [hasUserInfo, setHasUserInfo] = useState<boolean>(false)
-  const [userInfo, setUserInfo] = useState<UserInfo>({ fullName: "", email: "", phone: "" })
+  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [showPopup, setShowPopup] = useState<boolean>(false);
+  const [hasUserInfo, setHasUserInfo] = useState<boolean>(false);
+  const [userInfo, setUserInfo] = useState<UserInfo>({
+    fullName: "",
+    email: "",
+    phone: "",
+  });
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
@@ -32,32 +38,128 @@ export default function ChatWidget() {
       sender: "bot",
       timestamp: new Date(),
     },
-  ])
-  const [inputValue, setInputValue] = useState<string>("")
-  const [isTyping, setIsTyping] = useState<boolean>(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  ]);
+  const [inputValue, setInputValue] = useState<string>("");
+  const [isTyping, setIsTyping] = useState<boolean>(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const textareaRef = useRef(null);
+
+  const getChats = async () => {
+    try {
+      const response = await getChatApiMiddleware();
+      console.log("Response from getChats:", response);
+    } catch (error) {
+      console.error("Error fetching chats:", error);
+    }
+  };
+
+  useEffect(() => {
+    getChats();
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setShowPopup(false)
-    }, 3000)
+      setShowPopup(true);
+    }, 5000);
 
-    return () => clearTimeout(timer)
-  }, []) // Empty dependency array so it only runs once on mount
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Auto-hide popup 10s after it becomes visible
+  useEffect(() => {
+    if (showPopup) {
+      const timer = setTimeout(() => {
+        setShowPopup(false);
+      }, 10000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [showPopup]);
 
   useEffect(() => {
     if (isOpen) {
-      setShowPopup(false)
+      setShowPopup(false);
     }
-  }, [isOpen])
+  }, [isOpen]);
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+    scrollToBottom();
+  }, [messages]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // Auto-expand textarea
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputValue(e.target.value);
+
+    const textarea = e.target;
+    textarea.style.height = "auto"; // reset height
+    textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px"; // grow up to 200px
+  };
+
+  // Handle Enter / Shift+Enter
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault(); // prevent newline
+      handleSendMessage();
+    }
+  };
+
+  // Reset input after sending
+  const handleSendMessage = async () => {
+    if (!inputValue.trim()) return;
+
+    // Add user message
+    const userMessage: Message = {
+      id: Date.now(),
+      text: inputValue,
+      sender: "user",
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+
+    // Store current input before clearing
+    const currentInput = inputValue;
+    setInputValue("");
+    setIsTyping(true);
+
+    // Reset textarea height back to single line
+    if (textareaRef.current) {
+      (textareaRef.current as HTMLTextAreaElement).style.height = "44px";
+    }
+
+    try {
+      const botResponseText = await getBotResponse(currentInput);
+
+      setTimeout(() => {
+        const botResponse: Message = {
+          id: Date.now() + 1,
+          text: botResponseText,
+          sender: "bot",
+          timestamp: new Date(),
+        };
+
+        setMessages((prev) => [...prev, botResponse]);
+        setIsTyping(false);
+      }, 6000);
+    } catch (error) {
+      setTimeout(() => {
+        const errorResponse: Message = {
+          id: Date.now() + 1,
+          text: "I'm sorry, I'm having trouble connecting right now. Please try again.",
+          sender: "bot",
+          timestamp: new Date(),
+        };
+
+        setMessages((prev) => [...prev, errorResponse]);
+        setIsTyping(false);
+      }, 6000);
+    }
+  };
 
   const getBotResponse = async (userMessage: string): Promise<string> => {
     try {
@@ -76,74 +178,28 @@ export default function ChatWidget() {
               }
             : null,
         }),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error("Failed to get response")
+        throw new Error("Failed to get response");
       }
 
-      const data = await response.json()
-      return data.content || "I'm sorry, I couldn't process that request."
+      const data = await response.json();
+      return data.content || "I'm sorry, I couldn't process that request.";
     } catch (error) {
-      console.error("Error getting bot response:", error)
-      return "I'm sorry, I'm having trouble connecting right now. Please try again."
+      console.error("Error getting bot response:", error);
+      return "I'm sorry, I'm having trouble connecting right now. Please try again.";
     }
-  }
-
-  const handleSendMessage = async () => {
-    if (!inputValue.trim()) return
-
-    const userMessage: Message = {
-      id: Date.now(),
-      text: inputValue,
-      sender: "user",
-      timestamp: new Date(),
-    }
-
-    setMessages((prev) => [...prev, userMessage])
-    const currentInput = inputValue
-    setInputValue("")
-    setIsTyping(true)
-
-    try {
-      const botResponseText = await getBotResponse(currentInput)
-
-      setTimeout(() => {
-        const botResponse: Message = {
-          id: Date.now() + 1,
-          text: botResponseText,
-          sender: "bot",
-          timestamp: new Date(),
-        }
-
-        setMessages((prev) => [...prev, botResponse])
-        setIsTyping(false)
-      }, 1000)
-    } catch (error) {
-      setTimeout(() => {
-        const errorResponse: Message = {
-          id: Date.now() + 1,
-          text: "I'm sorry, I'm having trouble connecting right now. Please try again.",
-          sender: "bot",
-          timestamp: new Date(),
-        }
-
-        setMessages((prev) => [...prev, errorResponse])
-        setIsTyping(false)
-      }, 1000)
-    }
-  }
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSendMessage()
-    }
-  }
+  };
 
   const handleUserInfoSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (userInfo.fullName.trim() && userInfo.email.trim() && userInfo.phone.trim()) {
-      setHasUserInfo(true)
+    e.preventDefault();
+    if (
+      userInfo.fullName.trim() &&
+      userInfo.email.trim() &&
+      userInfo.phone.trim()
+    ) {
+      setHasUserInfo(true);
       // Update welcome message to include user's name
       setMessages([
         {
@@ -152,9 +208,9 @@ export default function ChatWidget() {
           sender: "bot",
           timestamp: new Date(),
         },
-      ])
+      ]);
     }
-  }
+  };
 
   return (
     <>
@@ -170,7 +226,7 @@ export default function ChatWidget() {
           >
             <div
               className="relative rounded-xl border border-gray-200/50 bg-white/80 backdrop-blur-md 
-                        shadow-lg p-4 overflow-hidden"
+                  shadow-lg p-4 overflow-hidden"
             >
               {/* Decorative gradient top border */}
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#03a84e] to-[#0a791e]" />
@@ -179,15 +235,17 @@ export default function ChatWidget() {
               <button
                 onClick={() => setShowPopup(false)}
                 className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center 
-                       rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 
-                       transition-colors text-sm"
+                 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 
+                 transition-colors text-sm"
               >
                 ×
               </button>
 
               {/* Content */}
               <div className="pt-2">
-                <p className="text-gray-700 text-sm leading-relaxed">👋 Hi there! Do you have any questions?</p>
+                <p className="text-gray-700 text-sm leading-relaxed">
+                  👋 Hi there! Do you have any questions?
+                </p>
               </div>
             </div>
           </motion.div>
@@ -203,18 +261,18 @@ export default function ChatWidget() {
       >
         {/* Default Logo (green button) */}
         <img
-          src="/assets/glick-roofing-white-logo.svg"
+          src="/assets/chat-white.png"
           alt="logo"
-          width={45}
-          height={45}
+          width={35}
+          height={35}
           className="block group-hover:hidden transition-opacity duration-200"
         />
         {/* Hover Logo (light gray button) */}
         <img
-          src="/assets/glick-roofing-logo.svg"
+          src="/assets/chat-green.png"
           alt="logo-colored"
-          width={45}
-          height={45}
+          width={36}
+          height={36}
           className="hidden group-hover:block transition-opacity duration-200"
         />
       </button>
@@ -244,8 +302,10 @@ export default function ChatWidget() {
                   <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-green-500 border-2 border-white"></div>
                 </div>
                 <div className="flex flex-col">
-                  <h2 className="text-white text-xl font-medium">Glick Roofing</h2>
-                  <p className="text-gray-200 text-sm ">AI Support</p>
+                  <h2 className="text-white text-xl font-medium">
+                    Glick Roofing
+                  </h2>
+                  <p className="text-gray-200 text-sm ">Office Support</p>
                 </div>
               </div>
               <button
@@ -269,72 +329,7 @@ export default function ChatWidget() {
               </button>
             </div>
             <div className="flex-1 overflow-hidden h-[calc(100%-76px)] flex flex-col">
-              {!hasUserInfo ? (
-                // User Information Form
-                <div className="flex-1 flex items-center justify-center bg-gray-50 p-6">
-                  <div className="w-full max-w-sm">
-                    <div className="text-center mb-6">
-                      <h3 className="text-xl font-semibold text-gray-800 mb-2">Welcome to Glick Roofing!</h3>
-                      <p className="text-gray-600 text-sm">Please provide your information to get started</p>
-                    </div>
-
-                    <form onSubmit={handleUserInfoSubmit} className="space-y-4">
-                      <div>
-                        <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">
-                          Full Name *
-                        </label>
-                        <input
-                          type="text"
-                          id="fullName"
-                          required
-                          value={userInfo.fullName}
-                          onChange={(e) => setUserInfo((prev) => ({ ...prev, fullName: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#03a84e] focus:border-transparent"
-                          placeholder="Enter your full name"
-                        />
-                      </div>
-
-                      <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                          Email Address *
-                        </label>
-                        <input
-                          type="email"
-                          id="email"
-                          required
-                          value={userInfo.email}
-                          onChange={(e) => setUserInfo((prev) => ({ ...prev, email: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#03a84e] focus:border-transparent"
-                          placeholder="Enter your email"
-                        />
-                      </div>
-
-                      <div>
-                        <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                          Phone Number *
-                        </label>
-                        <input
-                          type="tel"
-                          id="phone"
-                          required
-                          value={userInfo.phone}
-                          onChange={(e) => setUserInfo((prev) => ({ ...prev, phone: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#03a84e] focus:border-transparent"
-                          placeholder="Enter your phone number"
-                        />
-                      </div>
-
-                      <button
-                        type="submit"
-                        className="w-full py-3 bg-gradient-to-r from-[#03a84e] to-[#0a791e] text-white rounded-lg hover:from-[#028a42] hover:to-[#086b1a] transition-colors font-medium"
-                      >
-                        Start Chat
-                      </button>
-                    </form>
-                  </div>
-                </div>
-              ) : (
-                // Chat Interface
+              {
                 <div className="flex-1 overflow-hidden bg-gray-50">
                   <div className="h-full flex flex-col">
                     {/* Messages area */}
@@ -342,7 +337,11 @@ export default function ChatWidget() {
                       {messages.map((message) => (
                         <div
                           key={message.id}
-                          className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+                          className={`flex ${
+                            message.sender === "user"
+                              ? "justify-end"
+                              : "justify-start"
+                          }`}
                         >
                           <div
                             className={`max-w-[80%] p-3 rounded-lg ${
@@ -351,7 +350,13 @@ export default function ChatWidget() {
                                 : "bg-gray-200/80 shadow-sm rounded-bl-none"
                             }`}
                           >
-                            <p className={`text-sm ${message.sender === "user" ? "text-white" : "text-gray-700"}`}>
+                            <p
+                              className={`text-sm whitespace-pre-wrap break-words ${
+                                message.sender === "user"
+                                  ? "text-white"
+                                  : "text-gray-700"
+                              }`}
+                            >
                               {message.text}
                             </p>
                           </div>
@@ -381,31 +386,37 @@ export default function ChatWidget() {
 
                     {/* Input area */}
                     <div className="p-4 border-t bg-white">
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
+                      <div className="flex gap-2 items-end">
+                        <textarea
+                          ref={textareaRef}
                           value={inputValue}
-                          onChange={(e) => setInputValue(e.target.value)}
-                          onKeyPress={handleKeyPress}
+                          onChange={handleInputChange}
+                          onKeyDown={handleKeyPress}
                           placeholder="Type your message..."
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#03a84e] focus:border-transparent"
+                          rows={1}
+                          className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#03a84e] focus:border-transparent resize-none overflow-hidden max-h-[200px]"
+                          style={{ minHeight: "44px" }}
                         />
                         <button
                           onClick={handleSendMessage}
                           disabled={!inputValue.trim()}
-                          className="px-4 py-2 bg-gradient-to-r from-[#03a84e] to-[#0a791e] text-white rounded-lg hover:from-[#028a42] hover:to-[#086b1a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-4 py-3 bg-gradient-to-r from-[#03a84e] to-[#0a791e] text-white rounded-lg hover:from-[#028a42] hover:to-[#086b1a] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 h-[44px]"
                         >
-                          Send
+                          <Send size={18} />
+                          <span className="font-medium">Send</span>
                         </button>
                       </div>
+                      <p className="text-xs text-gray-500 mt-2 ml-1">
+                        Press Enter to send • Shift + Enter for new line
+                      </p>
                     </div>
                   </div>
                 </div>
-              )}
+              }
             </div>
           </motion.div>
         )}
       </AnimatePresence>
     </>
-  )
+  );
 }
