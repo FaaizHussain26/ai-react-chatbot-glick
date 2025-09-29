@@ -7,7 +7,6 @@ import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Send } from "lucide-react"
-import { getChatApiMiddleware } from "@/utils/api"
 
 interface Message {
   id: number
@@ -84,20 +83,6 @@ export default function ChatWidget() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const textareaRef = useRef(null)
-
-  const getChats = async () => {
-    try {
-      const response = await getChatApiMiddleware(chatId)
-      console.log("Response from getChats:", response)
-      setMessages(response)
-    } catch (error) {
-      console.error("Error fetching chats:", error)
-    }
-  }
-
-  useEffect(() => {
-    if (chatId) getChats()
-  }, [chatId])
 
   useEffect(() => {
     scrollToBottom()
