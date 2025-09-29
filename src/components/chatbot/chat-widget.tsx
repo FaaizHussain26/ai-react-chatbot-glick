@@ -18,9 +18,58 @@ interface Message {
 
 const API_URL = import.meta.env.VITE_API_URL
 
+const renderTextWithLinks = (text: string, isUserMessage = false) => {
+  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi
+  const phoneRegex = /($$\d{3}$$[-.\s]?\d{3}[-.\s]?\d{4}|\d{3}[-.\s]\d{3}[-.\s]?\d{4})/g
+
+  // Split text by URLs and phone numbers while keeping the matches
+  const parts = text.split(
+    /(https?:\/\/[^\s]+|www\.[^\s]+|$$\d{3}$$[-.\s]?\d{3}[-.\s]?\d{4}|\d{3}[-.\s]\d{3}[-.\s]?\d{4})/gi,
+  )
+
+  return parts.map((part, index) => {
+    // Check if it's a URL
+    if (urlRegex.test(part)) {
+      const href = part.startsWith("http") ? part : `https://${part}`
+      return (
+        <a
+          key={index}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`underline hover:no-underline ${
+            isUserMessage ? "text-white hover:text-gray-200" : "text-blue-600 hover:text-blue-800"
+          }`}
+        >
+          {part}
+        </a>
+      )
+    }
+
+    // Check if it's a phone number
+    if (phoneRegex.test(part)) {
+      // Clean phone number for tel: link
+      const cleanPhone = part.replace(/[^\d]/g, "")
+      return (
+        <a
+          key={index}
+          href={`tel:${cleanPhone}`}
+          className={`underline hover:no-underline ${
+            isUserMessage ? "text-white hover:text-gray-200" : "text-blue-600 hover:text-blue-800"
+          }`}
+        >
+          {part}
+        </a>
+      )
+    }
+
+    // Return regular text
+    return part
+  })
+}
+
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState<boolean>(false)
-  const [showPopup, setShowPopup] = useState<boolean>(false)
   const [chatId, setChatId] = useState<string>("")
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -49,31 +98,6 @@ export default function ChatWidget() {
   useEffect(() => {
     if (chatId) getChats()
   }, [chatId])
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowPopup(true)
-    }, 5000)
-
-    return () => clearTimeout(timer)
-  }, [])
-
-  // Auto-hide popup 10s after it becomes visible
-  useEffect(() => {
-    if (showPopup) {
-      const timer = setTimeout(() => {
-        setShowPopup(false)
-      }, 10000)
-
-      return () => clearTimeout(timer)
-    }
-  }, [showPopup])
-
-  useEffect(() => {
-    if (isOpen) {
-      setShowPopup(false)
-    }
-  }, [isOpen])
 
   useEffect(() => {
     scrollToBottom()
@@ -117,7 +141,6 @@ export default function ChatWidget() {
     // Store current input before clearing
     const currentInput = inputValue
     setInputValue("")
-    setIsTyping(true)
 
     // Reset textarea height back to single line
     if (textareaRef.current) {
@@ -128,28 +151,36 @@ export default function ChatWidget() {
       const botResponseText = await getBotResponse(currentInput)
 
       setTimeout(() => {
-        const botResponse: Message = {
-          id: Date.now() + 1,
-          text: botResponseText,
-          sender: "bot",
-          timestamp: new Date(),
-        }
+        setIsTyping(true)
 
-        setMessages((prev) => [...prev, botResponse])
-        setIsTyping(false)
-      }, 6000)
+        setTimeout(() => {
+          const botResponse: Message = {
+            id: Date.now() + 1,
+            text: botResponseText,
+            sender: "bot",
+            timestamp: new Date(),
+          }
+
+          setMessages((prev) => [...prev, botResponse])
+          setIsTyping(false)
+        }, 3000)
+      }, 2000)
     } catch (error) {
       setTimeout(() => {
-        const errorResponse: Message = {
-          id: Date.now() + 1,
-          text: "I'm sorry, I'm having trouble connecting right now. Please try again.",
-          sender: "bot",
-          timestamp: new Date(),
-        }
+        setIsTyping(true)
 
-        setMessages((prev) => [...prev, errorResponse])
-        setIsTyping(false)
-      }, 6000)
+        setTimeout(() => {
+          const errorResponse: Message = {
+            id: Date.now() + 1,
+            text: "I'm sorry, I'm having trouble connecting right now. Please try again.",
+            sender: "bot",
+            timestamp: new Date(),
+          }
+
+          setMessages((prev) => [...prev, errorResponse])
+          setIsTyping(false)
+        }, 3000)
+      }, 2000)
     }
   }
 
@@ -190,42 +221,6 @@ export default function ChatWidget() {
 
   return (
     <>
-      {/* Popup Message */}
-      <AnimatePresence>
-        {showPopup && !isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            className="fixed bottom-28 right-6 z-50 w-[260px]"
-          >
-            <div
-              className="relative rounded-xl border border-gray-200/50 bg-white/80 backdrop-blur-md 
-                  shadow-lg p-4 overflow-hidden"
-            >
-              {/* Decorative gradient top border */}
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#03a84e] to-[#0a791e]" />
-
-              {/* Close button */}
-              <button
-                onClick={() => setShowPopup(false)}
-                className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center 
-                 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 
-                 transition-colors text-sm"
-              >
-                ×
-              </button>
-
-              {/* Content */}
-              <div className="pt-2">
-                <p className="text-gray-700 text-sm leading-relaxed">👋 Hi there! Do you have any questions?</p>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Chat Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -301,84 +296,80 @@ export default function ChatWidget() {
               </button>
             </div>
             <div className="flex-1 overflow-hidden h-[calc(100%-76px)] flex flex-col">
-              {
-                <div className="flex-1 overflow-hidden bg-gray-50">
-                  <div className="h-full flex flex-col">
-                    {/* Messages area */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                      {messages.map((message) => (
+              <div className="flex-1 overflow-hidden bg-gray-50">
+                <div className="h-full flex flex-col">
+                  {/* Messages area */}
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {messages.map((message) => (
+                      <div
+                        key={message.id}
+                        className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+                      >
                         <div
-                          key={message.id}
-                          className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+                          className={`max-w-[80%] p-3 rounded-lg ${
+                            message.sender === "user"
+                              ? "bg-[#03a84e] text-white rounded-br-none"
+                              : "bg-gray-200/80 shadow-sm rounded-bl-none"
+                          }`}
                         >
                           <div
-                            className={`max-w-[80%] p-3 rounded-lg ${
-                              message.sender === "user"
-                                ? "bg-[#03a84e] text-white rounded-br-none"
-                                : "bg-gray-200/80 shadow-sm rounded-bl-none"
+                            className={`text-sm whitespace-pre-wrap break-words ${
+                              message.sender === "user" ? "text-white" : "text-gray-700"
                             }`}
                           >
-                            <p
-                              className={`text-sm whitespace-pre-wrap break-words ${
-                                message.sender === "user" ? "text-white" : "text-gray-700"
-                              }`}
-                            >
-                              {message.text}
-                            </p>
+                            {renderTextWithLinks(message.text, message.sender === "user")}
                           </div>
                         </div>
-                      ))}
-
-                      {/* Typing indicator */}
-                      {isTyping && (
-                        <div className="flex justify-start">
-                          <div className="bg-white shadow-sm rounded-lg rounded-bl-none p-3">
-                            <div className="flex space-x-1">
-                              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                              <div
-                                className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                                style={{ animationDelay: "0.1s" }}
-                              ></div>
-                              <div
-                                className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                                style={{ animationDelay: "0.2s" }}
-                              ></div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      <div ref={messagesEndRef} />
-                    </div>
-
-                    {/* Input area */}
-                    <div className="p-4 border-t bg-white">
-                      <div className="flex gap-2 items-end">
-                        <textarea
-                          ref={textareaRef}
-                          value={inputValue}
-                          onChange={handleInputChange}
-                          onKeyDown={handleKeyPress}
-                          placeholder="Type your message..."
-                          rows={1}
-                          className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#03a84e] focus:border-transparent resize-none overflow-hidden max-h-[200px]"
-                          style={{ minHeight: "44px" }}
-                        />
-                        <button
-                          onClick={handleSendMessage}
-                          disabled={!inputValue.trim()}
-                          className="px-4 py-3 bg-gradient-to-r from-[#03a84e] to-[#0a791e] text-white rounded-lg hover:from-[#028a42] hover:to-[#086b1a] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 h-[44px]"
-                        >
-                          <Send size={18} />
-                          <span className="font-medium">Send</span>
-                        </button>
                       </div>
-                      <p className="text-xs text-gray-500 mt-2 ml-1">
-                        Press Enter to send • Shift + Enter for new line
-                      </p>
+                    ))}
+
+                    {/* Typing indicator */}
+                    {isTyping && (
+                      <div className="flex justify-start">
+                        <div className="bg-white shadow-sm rounded-lg rounded-bl-none p-3">
+                          <div className="flex space-x-1">
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                            <div
+                              className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                              style={{ animationDelay: "0.1s" }}
+                            ></div>
+                            <div
+                              className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                              style={{ animationDelay: "0.2s" }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <div ref={messagesEndRef} />
+                  </div>
+
+                  {/* Input area */}
+                  <div className="p-4 border-t bg-white">
+                    <div className="flex gap-2 items-end">
+                      <textarea
+                        ref={textareaRef}
+                        value={inputValue}
+                        onChange={handleInputChange}
+                        onKeyDown={handleKeyPress}
+                        placeholder="Type your message..."
+                        rows={1}
+                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#03a84e] focus:border-transparent resize-none overflow-hidden max-h-[200px]"
+                        style={{ minHeight: "44px" }}
+                      />
+                      <button
+                        onClick={handleSendMessage}
+                        disabled={!inputValue.trim()}
+                        className="px-4 py-3 bg-gradient-to-r from-[#03a84e] to-[#0a791e] text-white rounded-lg hover:from-[#028a42] hover:to-[#086b1a] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 h-[44px]"
+                      >
+                        <Send size={18} />
+                        <span className="font-medium">Send</span>
+                      </button>
                     </div>
+                    <p className="text-xs text-gray-500 mt-2 ml-1">Press Enter to send • Shift + Enter for new line</p>
                   </div>
                 </div>
-              }
+              </div>
             </div>
           </motion.div>
         )}
