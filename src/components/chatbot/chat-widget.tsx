@@ -1,36 +1,27 @@
+"use client"
+
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import type React from "react";
+import type React from "react"
 
-import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Send } from "lucide-react";
-import { getChatApiMiddleware } from "@/utils/api";
+import { useState, useEffect, useRef } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Send } from "lucide-react"
+import { getChatApiMiddleware } from "@/utils/api"
 
 interface Message {
-  id: number;
-  text: string;
-  sender: "user" | "bot";
-  timestamp: Date;
+  id: number
+  text: string
+  sender: "user" | "bot"
+  timestamp: Date
 }
 
-interface UserInfo {
-  fullName: string;
-  email: string;
-  phone: string;
-}
-
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL
 
 export default function ChatWidget() {
-  const [isOpen, setIsOpen] = useState<boolean>(false);
-  const [showPopup, setShowPopup] = useState<boolean>(false);
-  const [hasUserInfo, setHasUserInfo] = useState<boolean>(false);
-  const [userInfo, setUserInfo] = useState<UserInfo>({
-    fullName: "",
-    email: "",
-    phone: "",
-  });
+  const [isOpen, setIsOpen] = useState<boolean>(false)
+  const [showPopup, setShowPopup] = useState<boolean>(false)
+  const [chatId, setChatId] = useState<string>("")
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
@@ -38,79 +29,80 @@ export default function ChatWidget() {
       sender: "bot",
       timestamp: new Date(),
     },
-  ]);
-  const [inputValue, setInputValue] = useState<string>("");
-  const [isTyping, setIsTyping] = useState<boolean>(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  ])
+  const [inputValue, setInputValue] = useState<string>("")
+  const [isTyping, setIsTyping] = useState<boolean>(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const textareaRef = useRef(null);
+  const textareaRef = useRef(null)
 
   const getChats = async () => {
     try {
-      const response = await getChatApiMiddleware();
-      console.log("Response from getChats:", response);
+      const response = await getChatApiMiddleware(chatId)
+      console.log("Response from getChats:", response)
+      setMessages(response)
     } catch (error) {
-      console.error("Error fetching chats:", error);
+      console.error("Error fetching chats:", error)
     }
-  };
+  }
 
   useEffect(() => {
-    getChats();
-  }, []);
+    if (chatId) getChats()
+  }, [chatId])
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setShowPopup(true);
-    }, 5000);
+      setShowPopup(true)
+    }, 5000)
 
-    return () => clearTimeout(timer);
-  }, []);
+    return () => clearTimeout(timer)
+  }, [])
 
   // Auto-hide popup 10s after it becomes visible
   useEffect(() => {
     if (showPopup) {
       const timer = setTimeout(() => {
-        setShowPopup(false);
-      }, 10000);
+        setShowPopup(false)
+      }, 10000)
 
-      return () => clearTimeout(timer);
+      return () => clearTimeout(timer)
     }
-  }, [showPopup]);
+  }, [showPopup])
 
   useEffect(() => {
     if (isOpen) {
-      setShowPopup(false);
+      setShowPopup(false)
     }
-  }, [isOpen]);
+  }, [isOpen])
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    scrollToBottom()
+  }, [messages])
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
 
   // Auto-expand textarea
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInputValue(e.target.value);
+    setInputValue(e.target.value)
 
-    const textarea = e.target;
-    textarea.style.height = "auto"; // reset height
-    textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px"; // grow up to 200px
-  };
+    const textarea = e.target
+    textarea.style.height = "auto" // reset height
+    textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px" // grow up to 200px
+  }
 
   // Handle Enter / Shift+Enter
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault(); // prevent newline
-      handleSendMessage();
+      e.preventDefault() // prevent newline
+      handleSendMessage()
     }
-  };
+  }
 
   // Reset input after sending
   const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim()) return
 
     // Add user message
     const userMessage: Message = {
@@ -118,22 +110,22 @@ export default function ChatWidget() {
       text: inputValue,
       sender: "user",
       timestamp: new Date(),
-    };
+    }
 
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage])
 
     // Store current input before clearing
-    const currentInput = inputValue;
-    setInputValue("");
-    setIsTyping(true);
+    const currentInput = inputValue
+    setInputValue("")
+    setIsTyping(true)
 
     // Reset textarea height back to single line
     if (textareaRef.current) {
-      (textareaRef.current as HTMLTextAreaElement).style.height = "44px";
+      ;(textareaRef.current as HTMLTextAreaElement).style.height = "44px"
     }
 
     try {
-      const botResponseText = await getBotResponse(currentInput);
+      const botResponseText = await getBotResponse(currentInput)
 
       setTimeout(() => {
         const botResponse: Message = {
@@ -141,11 +133,11 @@ export default function ChatWidget() {
           text: botResponseText,
           sender: "bot",
           timestamp: new Date(),
-        };
+        }
 
-        setMessages((prev) => [...prev, botResponse]);
-        setIsTyping(false);
-      }, 6000);
+        setMessages((prev) => [...prev, botResponse])
+        setIsTyping(false)
+      }, 6000)
     } catch (error) {
       setTimeout(() => {
         const errorResponse: Message = {
@@ -153,64 +145,48 @@ export default function ChatWidget() {
           text: "I'm sorry, I'm having trouble connecting right now. Please try again.",
           sender: "bot",
           timestamp: new Date(),
-        };
+        }
 
-        setMessages((prev) => [...prev, errorResponse]);
-        setIsTyping(false);
-      }, 6000);
+        setMessages((prev) => [...prev, errorResponse])
+        setIsTyping(false)
+      }, 6000)
     }
-  };
+  }
 
   const getBotResponse = async (userMessage: string): Promise<string> => {
     try {
+      const requestBody: any = {
+        messages: userMessage,
+      }
+
+      if (chatId) {
+        requestBody.chatId = chatId
+      }
+
       const response = await fetch(`${API_URL}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          messages: [{ role: "user", content: userMessage }],
-          userContext: hasUserInfo
-            ? {
-                name: userInfo.fullName,
-                email: userInfo.email,
-                phone: userInfo.phone,
-              }
-            : null,
-        }),
-      });
+        body: JSON.stringify(requestBody),
+      })
 
       if (!response.ok) {
-        throw new Error("Failed to get response");
+        throw new Error("Failed to get response")
       }
 
-      const data = await response.json();
-      return data.content || "I'm sorry, I couldn't process that request.";
-    } catch (error) {
-      console.error("Error getting bot response:", error);
-      return "I'm sorry, I'm having trouble connecting right now. Please try again.";
-    }
-  };
+      const data = await response.json()
 
-  const handleUserInfoSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (
-      userInfo.fullName.trim() &&
-      userInfo.email.trim() &&
-      userInfo.phone.trim()
-    ) {
-      setHasUserInfo(true);
-      // Update welcome message to include user's name
-      setMessages([
-        {
-          id: 1,
-          text: `Hi ${userInfo.fullName}! My name is Esther. How can I help you today? 🙂`,
-          sender: "bot",
-          timestamp: new Date(),
-        },
-      ]);
+      if (!chatId && data.id) {
+        setChatId(data.id)
+      }
+
+      return data.content || "I'm sorry, I couldn't process that request."
+    } catch (error) {
+      console.error("Error getting bot response:", error)
+      return "I'm sorry, I'm having trouble connecting right now. Please try again."
     }
-  };
+  }
 
   return (
     <>
@@ -243,9 +219,7 @@ export default function ChatWidget() {
 
               {/* Content */}
               <div className="pt-2">
-                <p className="text-gray-700 text-sm leading-relaxed">
-                  👋 Hi there! Do you have any questions?
-                </p>
+                <p className="text-gray-700 text-sm leading-relaxed">👋 Hi there! Do you have any questions?</p>
               </div>
             </div>
           </motion.div>
@@ -302,9 +276,7 @@ export default function ChatWidget() {
                   <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-green-500 border-2 border-white"></div>
                 </div>
                 <div className="flex flex-col">
-                  <h2 className="text-white text-xl font-medium">
-                    Glick Roofing
-                  </h2>
+                  <h2 className="text-white text-xl font-medium">Glick Roofing</h2>
                   <p className="text-gray-200 text-sm ">Office Support</p>
                 </div>
               </div>
@@ -337,11 +309,7 @@ export default function ChatWidget() {
                       {messages.map((message) => (
                         <div
                           key={message.id}
-                          className={`flex ${
-                            message.sender === "user"
-                              ? "justify-end"
-                              : "justify-start"
-                          }`}
+                          className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
                         >
                           <div
                             className={`max-w-[80%] p-3 rounded-lg ${
@@ -352,9 +320,7 @@ export default function ChatWidget() {
                           >
                             <p
                               className={`text-sm whitespace-pre-wrap break-words ${
-                                message.sender === "user"
-                                  ? "text-white"
-                                  : "text-gray-700"
+                                message.sender === "user" ? "text-white" : "text-gray-700"
                               }`}
                             >
                               {message.text}
@@ -418,5 +384,5 @@ export default function ChatWidget() {
         )}
       </AnimatePresence>
     </>
-  );
+  )
 }
