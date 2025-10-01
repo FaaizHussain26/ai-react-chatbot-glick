@@ -1,5 +1,3 @@
-"use client";
-
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 
@@ -24,32 +22,19 @@ export default function ChatPopup({ isChatOpen, onOpenChat }: ChatPopupProps) {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // Always clear any existing timer when chat state changes
     clearTimer();
 
-    // When chat is open: hide the popup and reset dismissed so it can show later again
     if (isChatOpen) {
       setIsVisible(false);
       setIsDismissed(false);
       return;
     }
 
-    // If dismissed, do not show again in this session
     if (isDismissed) {
       setIsVisible(false);
       return;
     }
 
-    // Chat is closed here
-    const initialized = sessionStorage.getItem("chatPopupInitialized") === "1";
-
-    // If we've already initialized this session, show immediately (no delay)
-    if (initialized) {
-      setIsVisible(true);
-      return;
-    }
-
-    // First page load (no initialization yet): show after 3 seconds
     timerRef.current = window.setTimeout(() => {
       setIsVisible(true);
       sessionStorage.setItem("chatPopupInitialized", "1");
@@ -60,7 +45,6 @@ export default function ChatPopup({ isChatOpen, onOpenChat }: ChatPopupProps) {
     };
   }, [isChatOpen, isDismissed]);
 
-  // If hidden (or dismissed), render nothing
   if (!isVisible || isDismissed) return null;
 
   const handleClose = (e: React.MouseEvent) => {

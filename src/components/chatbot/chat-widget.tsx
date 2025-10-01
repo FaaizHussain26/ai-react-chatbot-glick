@@ -7,7 +7,6 @@ import type React from "react";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send } from "lucide-react";
-import ChatPopup from "./chat-popup";
 
 interface Message {
   id: number;
@@ -73,8 +72,13 @@ const renderTextWithLinks = (text: string, isUserMessage = false) => {
   });
 };
 
-export default function ChatWidget() {
-  const [isOpen, setIsOpen] = useState<boolean>(false);
+export const ChatWidget = ({
+  isOpen,
+  handleIsOpen,
+}: {
+  isOpen?: boolean;
+  handleIsOpen?: (value: boolean) => void;
+}) => {
   const [chatId, setChatId] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -98,7 +102,6 @@ export default function ChatWidget() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Auto-expand textarea
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value);
 
@@ -107,7 +110,6 @@ export default function ChatWidget() {
     textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px"; // grow up to 200px
   };
 
-  // Handle Enter / Shift+Enter
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault(); // prevent newline
@@ -115,11 +117,9 @@ export default function ChatWidget() {
     }
   };
 
-  // Reset input after sending
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
 
-    // Add user message
     const userMessage: Message = {
       id: Date.now(),
       text: inputValue,
@@ -129,11 +129,9 @@ export default function ChatWidget() {
 
     setMessages((prev) => [...prev, userMessage]);
 
-    // Store current input before clearing
     const currentInput = inputValue;
     setInputValue("");
 
-    // Reset textarea height back to single line
     if (textareaRef.current) {
       (textareaRef.current as HTMLTextAreaElement).style.height = "44px";
     }
@@ -212,16 +210,14 @@ export default function ChatWidget() {
 
   return (
     <>
-      <ChatPopup isChatOpen={isOpen} onOpenChat={() => setIsOpen(true)} />
-
-      {/* Chat Button */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          handleIsOpen?.(true);
+        }}
         className="group fixed bottom-6 right-6 z-50 flex h-18 w-18 items-center justify-center 
              rounded-full bg-[#03a84e] shadow-lg border-none 
              transition-all duration-200 hover:scale-105 hover:bg-gray-200 hover:shadow-xl"
       >
-        {/* Default Logo (green button) */}
         <img
           src="/assets/chat-white.png"
           alt="logo"
@@ -229,7 +225,6 @@ export default function ChatWidget() {
           height={35}
           className="block group-hover:hidden transition-opacity duration-200"
         />
-        {/* Hover Logo (light gray button) */}
         <img
           src="/assets/chat-green.png"
           alt="logo-colored"
@@ -239,7 +234,6 @@ export default function ChatWidget() {
         />
       </button>
 
-      {/* Chat Interface */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -271,7 +265,7 @@ export default function ChatWidget() {
                 </div>
               </div>
               <button
-                onClick={() => setIsOpen(false)}
+                onClick={() => handleIsOpen?.(false)}
                 className="h-8 w-8 rounded-full text-white hover:bg-white/10 border-none bg-transparent flex items-center justify-center transition-colors"
               >
                 <svg
@@ -293,7 +287,6 @@ export default function ChatWidget() {
             <div className="flex-1 overflow-hidden h-[calc(100%-76px)] flex flex-col">
               <div className="flex-1 overflow-hidden bg-gray-50">
                 <div className="h-full flex flex-col">
-                  {/* Messages area */}
                   <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {messages.map((message) => (
                       <div
@@ -327,7 +320,6 @@ export default function ChatWidget() {
                       </div>
                     ))}
 
-                    {/* Typing indicator */}
                     {isTyping && (
                       <div className="flex justify-start">
                         <div className="bg-white shadow-sm rounded-lg rounded-bl-none p-3">
@@ -347,8 +339,6 @@ export default function ChatWidget() {
                     )}
                     <div ref={messagesEndRef} />
                   </div>
-
-                  {/* Input area */}
                   <div className="p-4 border-t bg-white">
                     <div className="flex gap-2 items-end">
                       <textarea
