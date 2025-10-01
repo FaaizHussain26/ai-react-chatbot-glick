@@ -1,35 +1,37 @@
-"use client"
+"use client";
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useEffect, useRef } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { Send } from "lucide-react"
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Send } from "lucide-react";
+import ChatPopup from "./chat-popup";
 
 interface Message {
-  id: number
-  text: string
-  sender: "user" | "bot"
-  timestamp: Date
+  id: number;
+  text: string;
+  sender: "user" | "bot";
+  timestamp: Date;
 }
 
-const API_URL = import.meta.env.VITE_API_URL
+const API_URL = import.meta.env.VITE_API_URL;
 
 const renderTextWithLinks = (text: string, isUserMessage = false) => {
-  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi
-  const phoneRegex = /($$\d{3}$$[-.\s]?\d{3}[-.\s]?\d{4}|\d{3}[-.\s]\d{3}[-.\s]?\d{4})/g
+  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+  const phoneRegex =
+    /($$\d{3}$$[-.\s]?\d{3}[-.\s]?\d{4}|\d{3}[-.\s]\d{3}[-.\s]?\d{4})/g;
 
   // Split text by URLs and phone numbers while keeping the matches
   const parts = text.split(
-    /(https?:\/\/[^\s]+|www\.[^\s]+|$$\d{3}$$[-.\s]?\d{3}[-.\s]?\d{4}|\d{3}[-.\s]\d{3}[-.\s]?\d{4})/gi,
-  )
+    /(https?:\/\/[^\s]+|www\.[^\s]+|$$\d{3}$$[-.\s]?\d{3}[-.\s]?\d{4}|\d{3}[-.\s]\d{3}[-.\s]?\d{4})/gi
+  );
 
   return parts.map((part, index) => {
     // Check if it's a URL
     if (urlRegex.test(part)) {
-      const href = part.startsWith("http") ? part : `https://${part}`
+      const href = part.startsWith("http") ? part : `https://${part}`;
       return (
         <a
           key={index}
@@ -37,39 +39,43 @@ const renderTextWithLinks = (text: string, isUserMessage = false) => {
           target="_blank"
           rel="noopener noreferrer"
           className={`underline hover:no-underline ${
-            isUserMessage ? "text-white hover:text-gray-200" : "text-blue-600 hover:text-blue-800"
+            isUserMessage
+              ? "text-white hover:text-gray-200"
+              : "text-blue-600 hover:text-blue-800"
           }`}
         >
           {part}
         </a>
-      )
+      );
     }
 
     // Check if it's a phone number
     if (phoneRegex.test(part)) {
       // Clean phone number for tel: link
-      const cleanPhone = part.replace(/[^\d]/g, "")
+      const cleanPhone = part.replace(/[^\d]/g, "");
       return (
         <a
           key={index}
           href={`tel:${cleanPhone}`}
           className={`underline hover:no-underline ${
-            isUserMessage ? "text-white hover:text-gray-200" : "text-blue-600 hover:text-blue-800"
+            isUserMessage
+              ? "text-white hover:text-gray-200"
+              : "text-blue-600 hover:text-blue-800"
           }`}
         >
           {part}
         </a>
-      )
+      );
     }
 
     // Return regular text
-    return part
-  })
-}
+    return part;
+  });
+};
 
 export default function ChatWidget() {
-  const [isOpen, setIsOpen] = useState<boolean>(false)
-  const [chatId, setChatId] = useState<string>("")
+  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [chatId, setChatId] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
@@ -77,41 +83,41 @@ export default function ChatWidget() {
       sender: "bot",
       timestamp: new Date(),
     },
-  ])
-  const [inputValue, setInputValue] = useState<string>("")
-  const [isTyping, setIsTyping] = useState<boolean>(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  ]);
+  const [inputValue, setInputValue] = useState<string>("");
+  const [isTyping, setIsTyping] = useState<boolean>(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const textareaRef = useRef(null)
+  const textareaRef = useRef(null);
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages, isTyping])
+    scrollToBottom();
+  }, [messages, isTyping]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   // Auto-expand textarea
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInputValue(e.target.value)
+    setInputValue(e.target.value);
 
-    const textarea = e.target
-    textarea.style.height = "auto" // reset height
-    textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px" // grow up to 200px
-  }
+    const textarea = e.target;
+    textarea.style.height = "auto"; // reset height
+    textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px"; // grow up to 200px
+  };
 
   // Handle Enter / Shift+Enter
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault() // prevent newline
-      handleSendMessage()
+      e.preventDefault(); // prevent newline
+      handleSendMessage();
     }
-  }
+  };
 
   // Reset input after sending
   const handleSendMessage = async () => {
-    if (!inputValue.trim()) return
+    if (!inputValue.trim()) return;
 
     // Add user message
     const userMessage: Message = {
@@ -119,24 +125,24 @@ export default function ChatWidget() {
       text: inputValue,
       sender: "user",
       timestamp: new Date(),
-    }
+    };
 
-    setMessages((prev) => [...prev, userMessage])
+    setMessages((prev) => [...prev, userMessage]);
 
     // Store current input before clearing
-    const currentInput = inputValue
-    setInputValue("")
+    const currentInput = inputValue;
+    setInputValue("");
 
     // Reset textarea height back to single line
     if (textareaRef.current) {
-      ;(textareaRef.current as HTMLTextAreaElement).style.height = "44px"
+      (textareaRef.current as HTMLTextAreaElement).style.height = "44px";
     }
 
     try {
-      const botResponseText = await getBotResponse(currentInput)
+      const botResponseText = await getBotResponse(currentInput);
 
       setTimeout(() => {
-        setIsTyping(true)
+        setIsTyping(true);
 
         setTimeout(() => {
           const botResponse: Message = {
@@ -144,15 +150,15 @@ export default function ChatWidget() {
             text: botResponseText,
             sender: "bot",
             timestamp: new Date(),
-          }
+          };
 
-          setMessages((prev) => [...prev, botResponse])
-          setIsTyping(false)
-        }, 3000)
-      }, 2000)
+          setMessages((prev) => [...prev, botResponse]);
+          setIsTyping(false);
+        }, 2000);
+      }, 400);
     } catch (error) {
       setTimeout(() => {
-        setIsTyping(true)
+        setIsTyping(true);
 
         setTimeout(() => {
           const errorResponse: Message = {
@@ -160,23 +166,23 @@ export default function ChatWidget() {
             text: "I'm sorry, I'm having trouble connecting right now. Please try again.",
             sender: "bot",
             timestamp: new Date(),
-          }
+          };
 
-          setMessages((prev) => [...prev, errorResponse])
-          setIsTyping(false)
-        }, 3000)
-      }, 2000)
+          setMessages((prev) => [...prev, errorResponse]);
+          setIsTyping(false);
+        }, 2000);
+      }, 400);
     }
-  }
+  };
 
   const getBotResponse = async (userMessage: string): Promise<string> => {
     try {
       const requestBody: any = {
         messages: userMessage,
-      }
+      };
 
       if (chatId) {
-        requestBody.chatId = chatId
+        requestBody.chatId = chatId;
       }
 
       const response = await fetch(`${API_URL}`, {
@@ -185,27 +191,29 @@ export default function ChatWidget() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(requestBody),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error("Failed to get response")
+        throw new Error("Failed to get response");
       }
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!chatId && data.id) {
-        setChatId(data.id)
+        setChatId(data.id);
       }
 
-      return data.content || "I'm sorry, I couldn't process that request."
+      return data.content || "I'm sorry, I couldn't process that request.";
     } catch (error) {
-      console.error("Error getting bot response:", error)
-      return "I'm sorry, I'm having trouble connecting right now. Please try again."
+      console.error("Error getting bot response:", error);
+      return "I'm sorry, I'm having trouble connecting right now. Please try again.";
     }
-  }
+  };
 
   return (
     <>
+      <ChatPopup isChatOpen={isOpen} onOpenChat={() => setIsOpen(true)} />
+
       {/* Chat Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -256,7 +264,9 @@ export default function ChatWidget() {
                   <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-green-500 border-2 border-white"></div>
                 </div>
                 <div className="flex flex-col">
-                  <h2 className="text-white text-xl font-medium">Glick Roofing</h2>
+                  <h2 className="text-white text-xl font-medium">
+                    Glick Roofing
+                  </h2>
                   <p className="text-gray-200 text-sm ">Office Support</p>
                 </div>
               </div>
@@ -288,7 +298,11 @@ export default function ChatWidget() {
                     {messages.map((message) => (
                       <div
                         key={message.id}
-                        className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+                        className={`flex ${
+                          message.sender === "user"
+                            ? "justify-end"
+                            : "justify-start"
+                        }`}
                       >
                         <div
                           className={`max-w-[80%] p-3 rounded-lg ${
@@ -299,10 +313,15 @@ export default function ChatWidget() {
                         >
                           <div
                             className={`text-sm whitespace-pre-wrap break-words ${
-                              message.sender === "user" ? "text-white" : "text-gray-700"
+                              message.sender === "user"
+                                ? "text-white"
+                                : "text-gray-700"
                             }`}
                           >
-                            {renderTextWithLinks(message.text, message.sender === "user")}
+                            {renderTextWithLinks(
+                              message.text,
+                              message.sender === "user"
+                            )}
                           </div>
                         </div>
                       </div>
@@ -351,7 +370,9 @@ export default function ChatWidget() {
                         <span className="font-medium">Send</span>
                       </button>
                     </div>
-                    <p className="text-xs text-gray-500 mt-2 ml-1">Press Enter to send • Shift + Enter for new line</p>
+                    <p className="text-xs text-gray-500 mt-2 ml-1">
+                      Press Enter to send • Shift + Enter for new line
+                    </p>
                   </div>
                 </div>
               </div>
@@ -360,5 +381,5 @@ export default function ChatWidget() {
         )}
       </AnimatePresence>
     </>
-  )
+  );
 }
