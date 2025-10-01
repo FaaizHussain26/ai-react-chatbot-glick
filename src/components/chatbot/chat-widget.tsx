@@ -212,7 +212,7 @@ export const ChatWidget = ({
     <>
       <button
         onClick={() => {
-          handleIsOpen?.(true);
+          handleIsOpen?.(!isOpen);
         }}
         className="group fixed bottom-6 right-6 z-50 flex h-18 w-18 items-center justify-center 
              rounded-full bg-[#03a84e] shadow-lg border-none 
