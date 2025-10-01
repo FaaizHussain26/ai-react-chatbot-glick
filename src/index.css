@@ -118,3 +118,22 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes chatHint {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  5% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  95% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
