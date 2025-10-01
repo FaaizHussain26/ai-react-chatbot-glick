@@ -25,6 +25,7 @@ interface ChatMessage {
   id: string;
   role: "assistant" | "user";
   content: string;
+  messages: string;
   options?: Array<{
     id: string;
     text: string;
@@ -65,27 +66,6 @@ const ChatHistoryPage: React.FC = () => {
 
     fetchChats();
   }, []);
-
-  const formatMessageContent = (message: ChatMessage) => {
-    if (message.parts && message.parts.length > 0) {
-      return message.parts.map((part) => part.text).join(" ");
-    }
-    return message.content;
-  };
-
-  const getMessagePreview = (messages: ChatMessage[]) => {
-    if (!messages || messages.length === 0) return "No messages";
-
-    const firstUserMessage = messages.find((msg) => msg.role === "user");
-    if (firstUserMessage) {
-      const content = formatMessageContent(firstUserMessage);
-      return content.length > 100 ? content.substring(0, 100) + "..." : content;
-    }
-
-    const firstMessage = messages[0];
-    const content = formatMessageContent(firstMessage);
-    return content.length > 100 ? content.substring(0, 100) + "..." : content;
-  };
 
   const ChatDialog = ({ chat }: { chat: Chat }) => (
     <Dialog>
@@ -129,7 +109,7 @@ const ChatHistoryPage: React.FC = () => {
                       </Badge>
                     </div>
                     <div className="whitespace-pre-wrap">
-                      {formatMessageContent(message)}
+                        {message.messages}
                     </div>
                     {message.options && message.options.length > 0 && (
                       <div className="mt-3 space-y-2">
@@ -212,7 +192,6 @@ const ChatHistoryPage: React.FC = () => {
                       Chat #{chat.chatId.slice(-8)}
                     </CardTitle>
                     <CardDescription>
-                      {getMessagePreview(chat.choices)}
                     </CardDescription>
                   </div>
                   <ChatDialog chat={chat} />

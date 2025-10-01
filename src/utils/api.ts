@@ -82,7 +82,7 @@ export async function chatApiMiddleware(messages: any) {
 
 export async function fetchChatHistories() {
   try {
-    const response = await fetch(`${API_URL}/chat/history`, {
+    const response = await fetch(`${API_URL}/histories`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
