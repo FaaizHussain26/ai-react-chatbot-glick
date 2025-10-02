@@ -6,8 +6,8 @@ export default function Main() {
   return (
     <Router>
       <Routes>
-        <Route path="/chats" element={<DashboardLayout />}>
-          <Route path="history" element={<ChatHistoryPage />} />
+        <Route path="/" element={<DashboardLayout />}>
+          <Route path="chats" element={<ChatHistoryPage />} />
         </Route>
       </Routes>
     </Router>
