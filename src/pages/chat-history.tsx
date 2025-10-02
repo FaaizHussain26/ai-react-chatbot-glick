@@ -95,7 +95,7 @@ const ChatHistoryPage: React.FC = () => {
                   <div
                     className={`max-w-[80%] rounded-lg p-4 ${
                       message.role === "user"
-                        ? "bg-blue-500 text-white"
+                        ? "bg-[#03a84e] text-white"
                         : "bg-gray-100 text-gray-900"
                     }`}
                   >
@@ -109,7 +109,7 @@ const ChatHistoryPage: React.FC = () => {
                       </Badge>
                     </div>
                     <div className="whitespace-pre-wrap">
-                        {message.messages}
+                      {message.messages}
                     </div>
                     {message.options && message.options.length > 0 && (
                       <div className="mt-3 space-y-2">
@@ -191,8 +191,7 @@ const ChatHistoryPage: React.FC = () => {
                     <CardTitle className="text-lg">
                       Chat #{chat.chatId.slice(-8)}
                     </CardTitle>
-                    <CardDescription>
-                    </CardDescription>
+                    <CardDescription></CardDescription>
                   </div>
                   <ChatDialog chat={chat} />
                 </div>
