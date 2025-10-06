@@ -175,7 +175,8 @@ export const ChatWidget = ({
 
   const getBotResponse = async (userMessage: string): Promise<string> => {
     try {
-      const requestBody: any = {
+      const requestBody: // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      any = {
         messages: userMessage,
       };
 
@@ -372,4 +373,4 @@ export const ChatWidget = ({
       </AnimatePresence>
     </>
   );
-}
+};

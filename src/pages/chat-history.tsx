@@ -57,7 +57,8 @@ const ChatHistoryPage: React.FC = () => {
       try {
         const data = await fetchChatHistories();
         setChats(data);
-      } catch (err: any) {
+      } catch (err: // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      any) {
         setError("Failed to fetch chat history: " + err.message);
       } finally {
         setLoading(false);
@@ -70,8 +71,12 @@ const ChatHistoryPage: React.FC = () => {
   const ChatDialog = ({ chat }: { chat: Chat }) => (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Eye className="w-4 h-4 mr-2" />
+        <Button
+          variant="secondary"
+          size="sm"
+          className="cursor-pointer bg-[#03a84e] hover:bg-[#03a84e]/80 text-white"
+        >
+          <Eye className="w-4 h-4 mr-1 " />
           View Chat
         </Button>
       </DialogTrigger>
@@ -95,7 +100,7 @@ const ChatHistoryPage: React.FC = () => {
                   <div
                     className={`max-w-[80%] rounded-lg p-4 ${
                       message.role === "user"
-                        ? "bg-blue-500 text-white"
+                        ? "bg-[#03a84e] text-white"
                         : "bg-gray-100 text-gray-900"
                     }`}
                   >
@@ -109,7 +114,7 @@ const ChatHistoryPage: React.FC = () => {
                       </Badge>
                     </div>
                     <div className="whitespace-pre-wrap">
-                        {message.messages}
+                      {message.messages}
                     </div>
                     {message.options && message.options.length > 0 && (
                       <div className="mt-3 space-y-2">
@@ -184,15 +189,17 @@ const ChatHistoryPage: React.FC = () => {
       ) : (
         <div className="grid gap-4">
           {chats.map((chat) => (
-            <Card key={chat._id} className="hover:shadow-md transition-shadow">
+            <Card
+              key={chat._id}
+              className="hover:shadow-md transition-shadow hover:bg-[#03a84e]/10"
+            >
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <CardTitle className="text-lg">
                       Chat #{chat.chatId.slice(-8)}
                     </CardTitle>
-                    <CardDescription>
-                    </CardDescription>
+                    <CardDescription></CardDescription>
                   </div>
                   <ChatDialog chat={chat} />
                 </div>
@@ -223,7 +230,10 @@ const ChatHistoryPage: React.FC = () => {
                       </span>
                     </div>
                   </div>
-                  <Badge variant="secondary">
+                  <Badge
+                    variant="secondary"
+                    className="bg-[#03a84e]/10 text-gray-600"
+                  >
                     {chat.choices ? chat.choices.length : 0} messages
                   </Badge>
                 </div>
