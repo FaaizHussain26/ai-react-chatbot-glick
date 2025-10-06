@@ -4,10 +4,10 @@ const API_URL = import.meta.env.VITE_API_URL;
 // API utility functions for chat functionality
 
 interface Message {
-  id: number
-  text: string
-  sender: "user" | "bot"
-  timestamp: Date
+  id: number;
+  text: string;
+  sender: "user" | "bot";
+  timestamp: Date;
 }
 
 /**
@@ -17,10 +17,10 @@ interface Message {
  */
 export async function getChatApiMiddleware(chatId: string): Promise<Message[]> {
   try {
-    const API_URL = import.meta.env.VITE_API_URL
+    const API_URL = import.meta.env.VITE_API_URL;
 
     if (!API_URL) {
-      throw new Error("API_URL environment variable is not set")
+      throw new Error("API_URL environment variable is not set");
     }
 
     const response = await fetch(`${API_URL}/history/${chatId}`, {
@@ -28,14 +28,14 @@ export async function getChatApiMiddleware(chatId: string): Promise<Message[]> {
       headers: {
         "Content-Type": "application/json",
       },
-    })
+    });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch chat: ${response.statusText}`)
+      throw new Error(`Failed to fetch chat: ${response.statusText}`);
     }
 
-    const data = await response.json()
-    console.log("[v0] API response data:", data)
+    const data = await response.json();
+    console.log("[v0] API response data:", data);
 
     // Transform API response to match Message interface
     return (
@@ -45,13 +45,12 @@ export async function getChatApiMiddleware(chatId: string): Promise<Message[]> {
         sender: msg.role === "user" ? "user" : "bot",
         timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
       })) || []
-    )
+    );
   } catch (error) {
-    console.error("Error in getChatApiMiddleware:", error)
-    throw error
+    console.error("Error in getChatApiMiddleware:", error);
+    throw error;
   }
 }
-
 
 export async function chatApiMiddleware(messages: any) {
   try {
@@ -120,6 +119,38 @@ export async function saveUser(payload: any) {
     return data;
   } catch (error) {
     console.error("Error in chat API:", error);
+    throw error;
+  }
+}
+
+export async function deleteChat(chatId: string) {
+  try {
+    if (!API_URL) {
+      throw new Error("API_URL environment variable is not set");
+    }
+
+    const response = await fetch(`${API_URL}/${chatId}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete chat: ${response.statusText}`);
+    }
+
+    // Check if response has content before parsing JSON
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      const data = await response.json();
+      return data;
+    }
+
+    // Return success message if no JSON response
+    return { success: true, message: "Chat deleted successfully" };
+  } catch (error) {
+    console.error("Error deleting chat:", error);
     throw error;
   }
 }

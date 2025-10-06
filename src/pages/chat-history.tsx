@@ -1,6 +1,4 @@
-import type React from "react";
-import { useEffect, useState } from "react";
-import { Eye, UserIcon, Calendar, Globe } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,9 +15,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { fetchChatHistories } from "@/utils/api";
+import { deleteChat, fetchChatHistories } from "@/utils/api";
+import { Calendar, Eye, Trash2 } from "lucide-react";
+import type React from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 interface ChatMessage {
   id: string;
@@ -51,6 +52,7 @@ const ChatHistoryPage: React.FC = () => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchChats = async () => {
@@ -68,23 +70,61 @@ const ChatHistoryPage: React.FC = () => {
     fetchChats();
   }, []);
 
+  const handleDeleteChat = async (chatId: string) => {
+    try {
+      // Set loading state
+      setIsDeleting(chatId);
+
+      // Call the API to delete the chat
+      await deleteChat(chatId);
+
+      // Remove the chat from local state
+      setChats((prevChats) => prevChats.filter((chat) => chat._id !== chatId));
+
+      console.log("Chat deleted successfully:", chatId);
+
+      // Show success toast notification
+      toast.success("Chat deleted successfully", {
+        description: "The chat has been removed from your history.",
+        position: "top-right",
+      });
+    } catch (error) {
+      console.error("Failed to delete chat:", error);
+
+      // Show error toast notification
+      toast.error("Failed to delete chat", {
+        description: "Something went wrong. Please try again.",
+        position: "top-right",
+      });
+    } finally {
+      // Clear loading state
+      setIsDeleting(null);
+    }
+  };
+
   const ChatDialog = ({ chat }: { chat: Chat }) => (
     <Dialog>
       <DialogTrigger asChild>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="cursor-pointer bg-[#03a84e] hover:bg-[#03a84e]/80 text-white"
-        >
-          <Eye className="w-4 h-4 mr-1 " />
-          View Chat
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="cursor-pointer bg-[#03a84e] hover:bg-[#03a84e]/80 text-white"
+          >
+            <Eye className="w-4 h-4 mr-1" />
+            View Chat
+          </Button>
+        </div>
       </DialogTrigger>
+
       <DialogContent className="max-w-4xl max-h-[80vh]">
         <DialogHeader>
           <DialogTitle>Chat Conversation</DialogTitle>
           <DialogDescription>
-            Chat ID: {chat.chatId} • {new Date(chat.createdAt).toLocaleString()}
+            Chat ID: {chat.chatId}{" "}
+            <span className="text-muted-foreground flex text-xs">
+              {new Date(chat.createdAt).toLocaleString()}
+            </span>
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-[60vh] w-full pr-4">
@@ -167,9 +207,13 @@ const ChatHistoryPage: React.FC = () => {
 
   return (
     <div className="p-6 max-w-full">
-      <div className="mb-6">
+      <div className="mb-6 ">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Chat History</h1>
-        <p className="text-gray-600">View and manage your chat conversations</p>
+        <div className="flex">
+          <p className="text-gray-600 w-[750px]">
+            View and manage your chat conversations
+          </p>
+        </div>
       </div>
 
       {chats.length === 0 ? (
@@ -197,32 +241,32 @@ const ChatHistoryPage: React.FC = () => {
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <CardTitle className="text-lg">
-                      Chat #{chat.chatId.slice(-8)}
+                      <span className="text-gray-600">Chat at</span>{" "}
+                      {new Date(chat.createdAt).toLocaleTimeString("en-US", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </CardTitle>
                     <CardDescription></CardDescription>
                   </div>
-                  <ChatDialog chat={chat} />
+                  <div className="flex gap-2">
+                    <ChatDialog chat={chat} />
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="cursor-pointer bg-red-100 hover:bg-red-200"
+                      onClick={() => handleDeleteChat(chat._id)}
+                      disabled={isDeleting === chat._id}
+                    >
+                      <Trash2 className="w-4 h-4 mr-1 text-red-600" />
+                      {isDeleting === chat._id ? "Deleting..." : ""}
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between text-sm text-gray-500">
                   <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1">
-                      <Globe className="w-4 h-4" />
-                      <span>{chat.ip}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <UserIcon className="w-4 h-4" />
-                      <span>
-                        {chat.user ? (
-                          <span className="text-gray-900 font-medium">
-                            {chat.user.name || chat.user.email}
-                          </span>
-                        ) : (
-                          "Anonymous"
-                        )}
-                      </span>
-                    </div>
                     <div className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
                       <span>
