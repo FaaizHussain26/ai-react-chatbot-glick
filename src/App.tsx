@@ -8,15 +8,12 @@ import { Toaster } from "sonner";
 function App() {
   const [isOpen, setIsOpen] = useState(false);
 
-  const handleIsOpen = (value: boolean) => {
-    setIsOpen(value);
-  };
-
   return (
     <ThemeProvider defaultTheme="light" storageKey="easydiymurphybed-theme">
-      <ChatWidget isOpen={isOpen} handleIsOpen={handleIsOpen} />
+      <ChatWidget isOpen={isOpen} handleIsOpen={setIsOpen} />
       <ChatPopup isChatOpen={isOpen} onOpenChat={() => setIsOpen(true)} />
       <Main />
+
       <Toaster position="top-right" richColors />
     </ThemeProvider>
   );
