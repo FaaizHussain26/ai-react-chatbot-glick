@@ -8,17 +8,18 @@ import {
 } from "react-router-dom";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { GuestMiddleware } from "@/components/middleware/guest-middleware";
+
 import LoginPage from "./login-page";
 import ChatHistoryPage from "./chat-history";
+import { AuthMiddleware } from "@/components/middleware/auth-middleware";
 
 export default function Main() {
   return (
     <Router>
       <Routes>
-        {/* Redirect root to login */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={null} />
 
-        {/* Guest-only login route; authenticated users are redirected by GuestMiddleware */}
+        {/* Guest-only login route */}
         <Route
           path="/login"
           element={
@@ -28,13 +29,18 @@ export default function Main() {
           }
         />
 
-        {/* Dashboard layout with nested routes */}
-        <Route path="/chats" element={<DashboardLayout />}>
+        <Route
+          path="/chats"
+          element={
+            <AuthMiddleware>
+              <DashboardLayout />
+            </AuthMiddleware>
+          }
+        >
           <Route path="" element={<ChatHistoryPage />} />
         </Route>
 
-        {/* Catch-all fallback */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );
