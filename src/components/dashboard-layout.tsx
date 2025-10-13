@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { BarChart3, LogOut } from "lucide-react";
+import { BookOpen, Bot, LogOut, MessageSquare, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -27,8 +27,23 @@ const data = {
   navMain: [
     {
       title: "Chat History",
-      url: "/chats/history",
-      icon: BarChart3,
+      url: "/chats",
+      icon: MessageSquare,
+    },
+    {
+      title: "Chatbot Configuration",
+      url: "/chatbot-configuration",
+      icon: Bot,
+    },
+    {
+      title: "Knowledge Base",
+      url: "/knowledge-base",
+      icon: BookOpen,
+    },
+    {
+      title: "Manage Chatbots",
+      url: "/manage-chatbots",
+      icon: Settings,
     },
   ],
 };
@@ -75,7 +90,11 @@ export function DashboardLayout() {
           <SidebarHeader className="border-b border-sidebar-border ">
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton size="lg" asChild>
+                <SidebarMenuButton
+                  size="lg"
+                  className="bg-transparent hover:bg-transparent active:bg-transparent"
+                  asChild
+                >
                   <button
                     onClick={() => handleNavigation("/chats")}
                     className="flex items-center gap-2 w-full"
@@ -109,18 +128,12 @@ export function DashboardLayout() {
                 <SidebarMenu>
                   {data.navMain.map((item) => (
                     <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isActive(item.url)}
-                        className={`w-full ${
-                          isActive(item.url) ? "bg-[#03a84e] text-white" : ""
-                        } hover:bg-[#03a84e] hover:text-white`}
-                      >
+                      <SidebarMenuButton asChild isActive={isActive(item.url)}>
                         <button
                           onClick={() => handleNavigation(item.url)}
-                          className="flex items-center gap-2 w-full px-3 py-2 text-inherit"
+                          className="flex items-center gap-2 w-full"
                         >
-                          <item.icon className="w-4 h-4" />
+                          <item.icon className="size-4" />
                           <span>{item.title}</span>
                         </button>
                       </SidebarMenuButton>

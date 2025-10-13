@@ -13,6 +13,10 @@ import LoginPage from "./login-page";
 import ChatHistoryPage from "./chat-history";
 import { AuthMiddleware } from "@/components/middleware/auth-middleware";
 
+import ChatbotConfigurationPage from "./chatbots";
+import KnowledgeBasePage from "./knowledge-base";
+import ManageChatbotsPage from "./manage-chatbots";
+
 export default function Main() {
   return (
     <Router>
@@ -38,6 +42,39 @@ export default function Main() {
           }
         >
           <Route path="" element={<ChatHistoryPage />} />
+        </Route>
+
+        <Route
+          path="/chatbot-configuration"
+          element={
+            <AuthMiddleware>
+              <DashboardLayout />
+            </AuthMiddleware>
+          }
+        >
+          <Route path="" element={<ChatbotConfigurationPage />} />
+        </Route>
+
+        <Route
+          path="/knowledge-base"
+          element={
+            <AuthMiddleware>
+              <DashboardLayout />
+            </AuthMiddleware>
+          }
+        >
+          <Route path="" element={<KnowledgeBasePage />} />
+        </Route>
+
+        <Route
+          path="/manage-chatbots"
+          element={
+            <AuthMiddleware>
+              <DashboardLayout />
+            </AuthMiddleware>
+          }
+        >
+          <Route path="" element={<ManageChatbotsPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
