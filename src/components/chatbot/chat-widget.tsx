@@ -184,7 +184,7 @@ export const ChatWidget = ({
         requestBody.chatId = chatId;
       }
 
-      const response = await fetch(`${API_URL}`, {
+      const response = await fetch(`${API_URL}/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

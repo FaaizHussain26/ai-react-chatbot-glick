@@ -1,6 +1,5 @@
-import { useState, useRef } from "react";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -10,7 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Upload, Save, FileText, X } from "lucide-react";
+import { FileText, Upload, X } from "lucide-react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 const KnowledgeBasePage: React.FC = () => {
@@ -253,8 +253,7 @@ const KnowledgeBasePage: React.FC = () => {
             className="w-full gap-2 bg-[#03a84e] hover:bg-[#028a40]"
             size="lg"
           >
-            <Save className="h-4 w-4" />
-            Save Knowledge Base
+            Create Knowledge Base
           </Button>
         </div>
       </Card>
