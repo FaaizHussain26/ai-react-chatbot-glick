@@ -1,6 +1,5 @@
-import { useState, useRef } from "react";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -10,7 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Upload, Save, FileText, X } from "lucide-react";
+import { FileText, Upload, X } from "lucide-react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 const KnowledgeBasePage: React.FC = () => {
@@ -121,15 +121,6 @@ const KnowledgeBasePage: React.FC = () => {
 
   return (
     <div className="max-w-8xl ml-7 mr-7">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground mb-2 mt-5">
-          Knowledge Base
-        </h1>
-        <p className="text-muted-foreground">
-          Upload documents to train your chatbot
-        </p>
-      </div>
-
       <Card className="p-6">
         <h2 className="text-xl font-semibold mb-6 text-foreground">
           Add New Knowledge Base
@@ -262,8 +253,7 @@ const KnowledgeBasePage: React.FC = () => {
             className="w-full gap-2 bg-[#03a84e] hover:bg-[#028a40]"
             size="lg"
           >
-            <Save className="h-4 w-4" />
-            Save Knowledge Base
+            Create Knowledge Base
           </Button>
         </div>
       </Card>
