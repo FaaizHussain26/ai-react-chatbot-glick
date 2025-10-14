@@ -109,7 +109,7 @@ const ManageChatbotsPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-6xl ml-7">
+    <div className="space-y-6 ml-7">
       <div className="flex items-center justify-between">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-foreground mb-2 mt-5">
@@ -125,7 +125,7 @@ const ManageChatbotsPage: React.FC = () => {
           <DialogTrigger asChild>
             <Button
               variant="default"
-              className="mb-6 gap-2 bg-[#03a84e] hover:bg-[#028a41] transition-colors shadow-sm"
+              className="mb-6 mr-7 gap-2 bg-[#03a84e] hover:bg-[#028a41] transition-colors shadow-sm"
             >
               <Plus className="h-4 w-4" />
               Add New Chatbot

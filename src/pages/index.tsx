@@ -13,9 +13,8 @@ import LoginPage from "./login-page";
 import ChatHistoryPage from "./chat-history";
 import { AuthMiddleware } from "@/components/middleware/auth-middleware";
 
-import ChatbotConfigurationPage from "./chatbots";
-import KnowledgeBasePage from "./knowledge-base";
 import ManageChatbotsPage from "./manage-chatbots";
+import ManageKnowledgeBasesPage from "./manage-knowledge-bases";
 
 export default function Main() {
   return (
@@ -45,28 +44,6 @@ export default function Main() {
         </Route>
 
         <Route
-          path="/chatbot-configuration"
-          element={
-            <AuthMiddleware>
-              <DashboardLayout />
-            </AuthMiddleware>
-          }
-        >
-          <Route path="" element={<ChatbotConfigurationPage />} />
-        </Route>
-
-        <Route
-          path="/knowledge-base"
-          element={
-            <AuthMiddleware>
-              <DashboardLayout />
-            </AuthMiddleware>
-          }
-        >
-          <Route path="" element={<KnowledgeBasePage />} />
-        </Route>
-
-        <Route
           path="/manage-chatbots"
           element={
             <AuthMiddleware>
@@ -75,6 +52,17 @@ export default function Main() {
           }
         >
           <Route path="" element={<ManageChatbotsPage />} />
+        </Route>
+
+        <Route
+          path="/manage-knowledge-bases"
+          element={
+            <AuthMiddleware>
+              <DashboardLayout />
+            </AuthMiddleware>
+          }
+        >
+          <Route path="" element={<ManageKnowledgeBasesPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { BookOpen, Bot, LogOut, MessageSquare, Settings } from "lucide-react";
+import { BookOpen, Bot, LogOut, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -31,19 +31,14 @@ const data = {
       icon: MessageSquare,
     },
     {
-      title: "Chatbot Configuration",
-      url: "/chatbot-configuration",
+      title: "Manage Chatbots",
+      url: "/manage-chatbots",
       icon: Bot,
     },
     {
-      title: "Knowledge Base",
-      url: "/knowledge-base",
+      title: "Manage Knowledge Bases",
+      url: "/manage-knowledge-bases",
       icon: BookOpen,
-    },
-    {
-      title: "Manage Chatbots",
-      url: "/manage-chatbots",
-      icon: Settings,
     },
   ],
 };
