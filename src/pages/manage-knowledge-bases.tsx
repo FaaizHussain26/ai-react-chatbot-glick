@@ -1,8 +1,7 @@
 "use client";
 
 import type React from "react";
-
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -21,10 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
 import { BookOpen, Upload, Edit, FileText, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { DialogTrigger } from "@radix-ui/react-dialog";
 import useSWR from "swr";
 import {
   deleteKnowledge,
@@ -33,47 +31,58 @@ import {
   type KnowledgeDto,
 } from "@/utils/api/knowledge-base-api";
 import KnowledgeBasePage from "./knowledge-base";
-import { ChatbotDto, getChatbots } from "@/utils/api/chatbot-api";
-import { ChatbotCardData } from "./manage-chatbots";
+import { type ChatbotDto, getChatbots } from "@/utils/api/chatbot-api";
 
-const fetcher = async () => getChatbots();
+// Move constants outside component
+const ALLOWED_FILE_TYPES = [
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
+
+const validateWordDocument = (file: File): boolean => {
+  return ALLOWED_FILE_TYPES.includes(file.type);
+};
 
 const ManageKnowledgeBasesPage: React.FC = () => {
   const { data, isLoading, error, mutate } = useSWR(
     "knowledge-list",
     getKnowledgeList
   );
+  const { data: dataChatbots } = useSWR<ChatbotDto[]>("chatbots", getChatbots);
 
-  const { data: dataChatbots } = useSWR<ChatbotDto[]>("chatbots", fetcher);
   const [editingKB, setEditingKB] = useState<KnowledgeDto | null>(null);
   const [editName, setEditName] = useState("");
   const [editDocument, setEditDocument] = useState<File | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const mapDtoToCard = (dto: ChatbotDto): ChatbotCardData => ({
-    id: dto._id,
-    name: dto.title,
-    subTitle: dto.subTitle ?? "",
-    color: "#10b981",
-    image: null,
-    knowledgeBase: null,
-  });
-  const chatbots: ChatbotCardData[] = (dataChatbots ?? []).map(mapDtoToCard);
+  // Memoize chatbots transformation
+  const chatbots = useMemo(
+    () =>
+      (dataChatbots ?? []).map((dto) => ({
+        id: dto._id,
+        name: dto.title,
+      })),
+    [dataChatbots]
+  );
 
-  const handleEdit = (kb: KnowledgeDto) => {
+  const handleEdit = useCallback((kb: KnowledgeDto) => {
     setEditingKB(kb);
     setEditName(kb.title);
     setEditDocument(null);
     setIsEditDialogOpen(true);
-  };
+  }, []);
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = useCallback(async () => {
     if (!editName.trim() || !editingKB?._id) {
       toast.error("Validation Error", {
         description: "Knowledge base name cannot be empty",
       });
       return;
     }
+
+    setIsSaving(true);
     try {
       await updateKnowledge(editingKB._id, {
         title: editName,
@@ -86,63 +95,74 @@ const ManageKnowledgeBasesPage: React.FC = () => {
       setEditingKB(null);
       setEditDocument(null);
       await mutate();
-    } catch (e: // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    any) {
+    } catch (e) {
       toast.error("Update failed", {
-        description: e?.message || "Please try again.",
+        description: (e as Error)?.message || "Please try again.",
       });
+    } finally {
+      setIsSaving(false);
     }
-  };
+  }, [editName, editingKB, editDocument, mutate]);
 
-  const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const isWordDoc =
-        file.type === "application/msword" ||
-        file.type ===
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  const handleDocumentUpload = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
 
-      if (!isWordDoc) {
+      if (!validateWordDocument(file)) {
         toast.error("Invalid File", {
           description: "Please upload a Word document (.doc or .docx)",
         });
         return;
       }
       setEditDocument(file);
-    }
-  };
+    },
+    []
+  );
 
-  const handleChatbotAssign = async (kbId: string, chatbotId: string) => {
-    try {
-      await updateKnowledge(kbId, { chatbotId });
-      toast.success("Success", {
-        description: "Chatbot assigned to knowledge base",
-      });
-      await mutate();
-    } catch (e: // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    any) {
-      toast.error("Assignment failed", {
-        description: e?.message || "Please try again.",
-      });
-    }
-  };
+  const handleChatbotAssign = useCallback(
+    async (kbId: string, chatbotId: string) => {
+      try {
+        await updateKnowledge(kbId, { chatbotId });
+        toast.success("Success", {
+          description: "Chatbot assigned to knowledge base",
+        });
+        await mutate();
+      } catch (e) {
+        toast.error("Assignment failed", {
+          description: (e as Error)?.message || "Please try again.",
+        });
+      }
+    },
+    [mutate]
+  );
 
-  const handleDelete = async (kbId: string) => {
-    const ok = window.confirm(
-      "Are you sure you want to delete this knowledge base?"
-    );
-    if (!ok) return;
-    try {
-      await deleteKnowledge(kbId);
-      toast.success("Deleted", { description: "Knowledge base deleted." });
-      await mutate();
-    } catch (e: // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    any) {
-      toast.error("Delete failed", {
-        description: e?.message || "Please try again.",
-      });
-    }
-  };
+  const handleDelete = useCallback(
+    async (kbId: string) => {
+      const ok = window.confirm(
+        "Are you sure you want to delete this knowledge base?"
+      );
+      if (!ok) return;
+
+      try {
+        await deleteKnowledge(kbId);
+        toast.success("Deleted", { description: "Knowledge base deleted." });
+        await mutate();
+      } catch (e) {
+        toast.error("Delete failed", {
+          description: (e as Error)?.message || "Please try again.",
+        });
+      }
+    },
+    [mutate]
+  );
+
+  const handleAddDialogClose = useCallback(() => setIsAddOpen(false), []);
+
+  const handleKnowledgeCreated = useCallback(async () => {
+    setIsAddOpen(false);
+    await mutate();
+  }, [mutate]);
 
   return (
     <div className="space-y-6 ml-7">
@@ -156,8 +176,7 @@ const ManageKnowledgeBasesPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Add New Knowledge Base Modal */}
-        <Dialog>
+        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger asChild>
             <Button
               variant="default"
@@ -180,13 +199,12 @@ const ManageKnowledgeBasesPage: React.FC = () => {
               </p>
             </DialogHeader>
             <div className="flex-1 overflow-y-auto px-6 py-5">
-              <KnowledgeBasePage onCreated={() => mutate()} />
+              <KnowledgeBasePage onCreated={handleKnowledgeCreated} />
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* List or loading/empty states */}
       {isLoading && (
         <p className="text-muted-foreground">Loading knowledge bases...</p>
       )}
@@ -194,7 +212,7 @@ const ManageKnowledgeBasesPage: React.FC = () => {
         <p className="text-destructive">Failed to load knowledge bases.</p>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {(data || []).map((kb) => (
           <Card key={kb._id} className="p-6">
             <div className="flex items-start justify-between">
@@ -253,7 +271,6 @@ const ManageKnowledgeBasesPage: React.FC = () => {
                   className="gap-2"
                 >
                   <Edit className="h-4 w-4" />
-                  Edit
                 </Button>
                 <Button
                   variant="destructive"
@@ -262,7 +279,6 @@ const ManageKnowledgeBasesPage: React.FC = () => {
                   className="gap-2"
                 >
                   <Trash2 className="h-4 w-4" />
-                  Delete
                 </Button>
               </div>
             </div>
@@ -270,7 +286,6 @@ const ManageKnowledgeBasesPage: React.FC = () => {
         ))}
       </div>
 
-      {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -289,15 +304,13 @@ const ManageKnowledgeBasesPage: React.FC = () => {
 
             <div className="space-y-2">
               <Label htmlFor="edit-document">Re-upload Document</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="edit-document"
-                  type="file"
-                  accept=".doc,.docx"
-                  onChange={handleDocumentUpload}
-                  className="cursor-pointer"
-                />
-              </div>
+              <Input
+                id="edit-document"
+                type="file"
+                accept=".doc,.docx"
+                onChange={handleDocumentUpload}
+                className="cursor-pointer"
+              />
               {editDocument && (
                 <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
                   <FileText className="h-4 w-4 text-primary" />
@@ -312,18 +325,16 @@ const ManageKnowledgeBasesPage: React.FC = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsEditDialogOpen(false)}
-            >
+            <Button variant="outline" onClick={handleAddDialogClose}>
               Cancel
             </Button>
             <Button
               onClick={handleSaveEdit}
-              className="bg-[#03a84e] hover:bg-[#028a41]"
+              disabled={isSaving}
+              className="bg-[#03a84e] hover:bg-[#028a41] disabled:opacity-50"
             >
-              <Upload className="h-4 w-4 mr-2 " />
-              Save Changes
+              <Upload className="h-4 w-4 mr-2" />
+              {isSaving ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
