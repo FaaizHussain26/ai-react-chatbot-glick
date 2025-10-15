@@ -207,31 +207,29 @@ export const ChatWidget = ({
     return <div>Loading...</div>
   }
 
-  console.log(chatbot?.colorCode, 'chatbot?.colorCode ')
-
   return (
     <>
       <button
         onClick={() => {
           handleIsOpen?.(!isOpen);
         }}
+        style={{ backgroundColor: chatbot?.colorCode }}
         className={`group fixed bottom-6 right-6 z-50 flex h-18 w-18 items-center justify-center 
-             rounded-full bg-[${chatbot?.colorCode || '#f00000'}] shadow-lg border-none 
-             transition-all duration-200 hover:scale-105 hover:bg-gray-200 hover:shadow-xl`}
+             rounded-full shadow-lg border-none `}
       >
         <img
           src="/assets/chat-white.png"
           alt="logo"
           width={35}
           height={35}
-          className="block group-hover:hidden transition-opacity duration-200"
+          className="block "
         />
         <img
           src="/assets/chat-green.png"
           alt="logo-colored"
           width={36}
           height={36}
-          className="hidden group-hover:block transition-opacity duration-200"
+          className="hidden"
         />
       </button>
 
@@ -245,7 +243,7 @@ export const ChatWidget = ({
             className="fixed bottom-27 right-6 sm:right-8 w-[90vw] sm:w-[400px] md:w-[450px] h-[600px] 
                         rounded-lg shadow-xl overflow-hidden z-40 bg-white border border-gray-200"
           >
-            <div className={`px-6 py-4 bg-[${chatbot?.colorCode || '#f00000'}] flex flex-row items-center justify-between border-b gap-3`}>
+            <div style={{ backgroundColor: chatbot?.colorCode }} className={`px-6 py-4 flex flex-row items-center justify-between border-b gap-3`}>
               <div className="flex items-center gap-3">
                 <div className="relative">
                   <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-white/50 bg-white">
@@ -354,8 +352,9 @@ export const ChatWidget = ({
                       />
                       <button
                         onClick={handleSendMessage}
+                        style={{ backgroundColor: chatbot?.colorCode }}
                         disabled={!inputValue.trim()}
-                        className={`px-4 py-3 bg-[${chatbot?.colorCode || '#f00000'}] text-white rounded-lg hover:from-[#028a42] hover:to-[#086b1a] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 h-[44px]`}
+                        className={`px-4 py-3 text-white rounded-lg hover:from-[#028a42] hover:to-[#086b1a] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 h-[44px]`}
                       >
                         <Send size={18} />
                         <span className="font-medium">Send</span>
