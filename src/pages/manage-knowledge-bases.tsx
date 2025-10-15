@@ -1,3 +1,7 @@
+"use client";
+
+import type React from "react";
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,83 +22,76 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { BookOpen, Upload, Edit, FileText, Plus } from "lucide-react";
+import { BookOpen, Upload, Edit, FileText, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { DialogTrigger } from "@radix-ui/react-dialog";
+import useSWR from "swr";
+import {
+  deleteKnowledge,
+  getKnowledgeList,
+  updateKnowledge,
+  type KnowledgeDto,
+} from "@/utils/api/knowledge-base-api";
 import KnowledgeBasePage from "./knowledge-base";
+import { ChatbotDto, getChatbots } from "@/utils/api/chatbot-api";
+import { ChatbotCardData } from "./manage-chatbots";
 
-interface KnowledgeBase {
-  id: string;
-  name: string;
-  documentName: string;
-  assignedChatbot?: string;
-  createdAt: string;
-}
+const fetcher = async () => getChatbots();
 
 const ManageKnowledgeBasesPage: React.FC = () => {
-  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([
-    {
-      id: "1",
-      name: "Roofing Services Guide",
-      documentName: "roofing-services.docx",
-      assignedChatbot: "Support Bot",
-      createdAt: "2024-01-15",
-    },
-    {
-      id: "2",
-      name: "Installation Process",
-      documentName: "installation-guide.docx",
-      createdAt: "2024-01-20",
-    },
-  ]);
+  const { data, isLoading, error, mutate } = useSWR(
+    "knowledge-list",
+    getKnowledgeList
+  );
 
-  const [editingKB, setEditingKB] = useState<KnowledgeBase | null>(null);
+  const { data: dataChatbots } = useSWR<ChatbotDto[]>("chatbots", fetcher);
+  const [editingKB, setEditingKB] = useState<KnowledgeDto | null>(null);
   const [editName, setEditName] = useState("");
   const [editDocument, setEditDocument] = useState<File | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  // Mock chatbots data
-  const mockChatbots = [
-    { id: "1", name: "Support Bot" },
-    { id: "2", name: "Sales Assistant" },
-    { id: "3", name: "Technical Helper" },
-  ];
+  const mapDtoToCard = (dto: ChatbotDto): ChatbotCardData => ({
+    id: dto._id,
+    name: dto.title,
+    subTitle: dto.subTitle ?? "",
+    color: "#10b981",
+    image: null,
+    knowledgeBase: null,
+  });
+  const chatbots: ChatbotCardData[] = (dataChatbots ?? []).map(mapDtoToCard);
 
-  const handleEdit = (kb: KnowledgeBase) => {
+  const handleEdit = (kb: KnowledgeDto) => {
     setEditingKB(kb);
-    setEditName(kb.name);
+    setEditName(kb.title);
     setEditDocument(null);
     setIsEditDialogOpen(true);
   };
 
-  const handleSaveEdit = () => {
-    if (!editName.trim()) {
-      toast.success("Error", {
+  const handleSaveEdit = async () => {
+    if (!editName.trim() || !editingKB?._id) {
+      toast.error("Validation Error", {
         description: "Knowledge base name cannot be empty",
       });
-
       return;
     }
-
-    setKnowledgeBases(
-      knowledgeBases.map((kb) =>
-        kb.id === editingKB?.id
-          ? {
-              ...kb,
-              name: editName,
-              documentName: editDocument ? editDocument.name : kb.documentName,
-            }
-          : kb
-      )
-    );
-
-    toast.success("Success", {
-      description: "Knowledge base updated successfully",
-    });
-
-    setIsEditDialogOpen(false);
-    setEditingKB(null);
-    setEditDocument(null);
+    try {
+      await updateKnowledge(editingKB._id, {
+        title: editName,
+        file: editDocument,
+      });
+      toast.success("Success", {
+        description: "Knowledge base updated successfully",
+      });
+      setIsEditDialogOpen(false);
+      setEditingKB(null);
+      setEditDocument(null);
+      await mutate();
+    } catch (e: // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    any) {
+      toast.error("Update failed", {
+        description: e?.message || "Please try again.",
+      });
+    }
   };
 
   const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -106,26 +103,45 @@ const ManageKnowledgeBasesPage: React.FC = () => {
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
       if (!isWordDoc) {
-        toast.success("Invalid File", {
+        toast.error("Invalid File", {
           description: "Please upload a Word document (.doc or .docx)",
         });
-
         return;
       }
       setEditDocument(file);
     }
   };
 
-  const handleChatbotAssign = (kbId: string, chatbotName: string) => {
-    setKnowledgeBases(
-      knowledgeBases.map((kb) =>
-        kb.id === kbId ? { ...kb, assignedChatbot: chatbotName } : kb
-      )
-    );
+  const handleChatbotAssign = async (kbId: string, chatbotId: string) => {
+    try {
+      await updateKnowledge(kbId, { chatbotId });
+      toast.success("Success", {
+        description: "Chatbot assigned to knowledge base",
+      });
+      await mutate();
+    } catch (e: // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    any) {
+      toast.error("Assignment failed", {
+        description: e?.message || "Please try again.",
+      });
+    }
+  };
 
-    toast.success("Success", {
-      description: "Chatbot assigned to knowledge base",
-    });
+  const handleDelete = async (kbId: string) => {
+    const ok = window.confirm(
+      "Are you sure you want to delete this knowledge base?"
+    );
+    if (!ok) return;
+    try {
+      await deleteKnowledge(kbId);
+      toast.success("Deleted", { description: "Knowledge base deleted." });
+      await mutate();
+    } catch (e: // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    any) {
+      toast.error("Delete failed", {
+        description: e?.message || "Please try again.",
+      });
+    }
   };
 
   return (
@@ -140,7 +156,7 @@ const ManageKnowledgeBasesPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Add New Chatbot Modal */}
+        {/* Add New Knowledge Base Modal */}
         <Dialog>
           <DialogTrigger asChild>
             <Button
@@ -164,15 +180,23 @@ const ManageKnowledgeBasesPage: React.FC = () => {
               </p>
             </DialogHeader>
             <div className="flex-1 overflow-y-auto px-6 py-5">
-              <KnowledgeBasePage />
+              <KnowledgeBasePage onCreated={() => mutate()} />
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {knowledgeBases.map((kb) => (
-          <Card key={kb.id} className="p-6">
+      {/* List or loading/empty states */}
+      {isLoading && (
+        <p className="text-muted-foreground">Loading knowledge bases...</p>
+      )}
+      {error && (
+        <p className="text-destructive">Failed to load knowledge bases.</p>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+        {(data || []).map((kb) => (
+          <Card key={kb._id} className="p-6">
             <div className="flex items-start justify-between">
               <div className="flex gap-4 flex-1">
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -181,15 +205,17 @@ const ManageKnowledgeBasesPage: React.FC = () => {
                 <div className="flex-1 space-y-3">
                   <div>
                     <h3 className="font-semibold text-lg text-foreground">
-                      {kb.name}
+                      {kb.title}
                     </h3>
                     <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
                       <FileText className="h-4 w-4" />
-                      <span>{kb.documentName}</span>
+                      <span>{kb.originalFileName || "—"}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Created: {new Date(kb.createdAt).toLocaleDateString()}
-                    </p>
+                    {kb.createdAt && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Created: {new Date(kb.createdAt).toLocaleDateString()}
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-4">
@@ -198,17 +224,17 @@ const ManageKnowledgeBasesPage: React.FC = () => {
                         Assigned Chatbot
                       </Label>
                       <Select
-                        value={kb.assignedChatbot || ""}
+                        value={kb.chatbotId || ""}
                         onValueChange={(value) =>
-                          handleChatbotAssign(kb.id, value)
+                          handleChatbotAssign(kb._id, value)
                         }
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select chatbot" />
                         </SelectTrigger>
                         <SelectContent>
-                          {mockChatbots.map((chatbot) => (
-                            <SelectItem key={chatbot.id} value={chatbot.name}>
+                          {chatbots.map((chatbot) => (
+                            <SelectItem key={chatbot.id} value={chatbot.id}>
                               {chatbot.name}
                             </SelectItem>
                           ))}
@@ -219,20 +245,32 @@ const ManageKnowledgeBasesPage: React.FC = () => {
                 </div>
               </div>
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleEdit(kb)}
-                className="gap-2"
-              >
-                <Edit className="h-4 w-4" />
-                Edit
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleEdit(kb)}
+                  className="gap-2"
+                >
+                  <Edit className="h-4 w-4" />
+                  Edit
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => handleDelete(kb._id)}
+                  className="gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </Button>
+              </div>
             </div>
           </Card>
         ))}
       </div>
 
+      {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -268,7 +306,7 @@ const ManageKnowledgeBasesPage: React.FC = () => {
               )}
               {!editDocument && editingKB && (
                 <p className="text-xs text-muted-foreground">
-                  Current: {editingKB.documentName}
+                  Current: {editingKB.originalFileName || "—"}
                 </p>
               )}
             </div>
