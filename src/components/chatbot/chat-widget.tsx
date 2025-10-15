@@ -7,6 +7,7 @@ import type React from "react";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send } from "lucide-react";
+import { renderTextWithLinks } from "./render-text-with-links";
 
 interface Message {
   id: number;
@@ -15,62 +16,17 @@ interface Message {
   timestamp: Date;
 }
 
+interface ChatbotDTO {
+  _id: string;
+  title: string;
+  subTitle: string;
+  colorCode: string;
+  imagePath: string;
+  createdAt: string;
+}
+
 const API_URL = import.meta.env.VITE_API_URL;
 
-const renderTextWithLinks = (text: string, isUserMessage = false) => {
-  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
-  const phoneRegex =
-    /($$\d{3}$$[-.\s]?\d{3}[-.\s]?\d{4}|\d{3}[-.\s]\d{3}[-.\s]?\d{4})/g;
-
-  // Split text by URLs and phone numbers while keeping the matches
-  const parts = text.split(
-    /(https?:\/\/[^\s]+|www\.[^\s]+|$$\d{3}$$[-.\s]?\d{3}[-.\s]?\d{4}|\d{3}[-.\s]\d{3}[-.\s]?\d{4})/gi
-  );
-
-  return parts.map((part, index) => {
-    // Check if it's a URL
-    if (urlRegex.test(part)) {
-      const href = part.startsWith("http") ? part : `https://${part}`;
-      return (
-        <a
-          key={index}
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`underline hover:no-underline ${
-            isUserMessage
-              ? "text-white hover:text-gray-200"
-              : "text-blue-600 hover:text-blue-800"
-          }`}
-        >
-          {part}
-        </a>
-      );
-    }
-
-    // Check if it's a phone number
-    if (phoneRegex.test(part)) {
-      // Clean phone number for tel: link
-      const cleanPhone = part.replace(/[^\d]/g, "");
-      return (
-        <a
-          key={index}
-          href={`tel:${cleanPhone}`}
-          className={`underline hover:no-underline ${
-            isUserMessage
-              ? "text-white hover:text-gray-200"
-              : "text-blue-600 hover:text-blue-800"
-          }`}
-        >
-          {part}
-        </a>
-      );
-    }
-
-    // Return regular text
-    return part;
-  });
-};
 
 export const ChatWidget = ({
   isOpen,
@@ -79,7 +35,18 @@ export const ChatWidget = ({
   isOpen?: boolean;
   handleIsOpen?: (value: boolean) => void;
 }) => {
+
+  const chatbotId = window.location.search?.split("=")[1];  
+
   const [chatId, setChatId] = useState<string>("");
+  const [chatbot, setChatbot] = useState<ChatbotDTO | null>({
+    _id: "",
+    title: "AI Assitant",
+    subTitle: "I will answer your questions",
+    colorCode: "#ffffff",
+    imagePath: "/placeholder.svg",
+    createdAt: "",
+  });
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
@@ -184,6 +151,10 @@ export const ChatWidget = ({
         requestBody.chatId = chatId;
       }
 
+      if(chatbotId) {
+        requestBody.chatbotId = chatbotId;
+      }
+
       const response = await fetch(`${API_URL}/chat`, {
         method: "POST",
         headers: {
@@ -209,15 +180,44 @@ export const ChatWidget = ({
     }
   };
 
+
+  const getChatbot = async () => {
+    try {
+      const response = await fetch(`${API_URL}/chatbot/${chatbotId}`);
+      if (!response.ok) {
+        throw new Error("Failed to get chatbot");
+      }
+      const data = await response.json();
+      if(data) {
+        setChatbot(data);
+      }
+    } catch (error) {
+      console.error("Error getting chatbot:", error);
+      return null;
+    }
+  }
+
+  useEffect(() => {
+    if(chatbotId) {
+      getChatbot();
+    }
+  }, [chatbotId]);  
+
+  if(!chatbotId) {
+    return <div>Loading...</div>
+  }
+
+  console.log(chatbot?.colorCode, 'chatbot?.colorCode ')
+
   return (
     <>
       <button
         onClick={() => {
           handleIsOpen?.(!isOpen);
         }}
-        className="group fixed bottom-6 right-6 z-50 flex h-18 w-18 items-center justify-center 
-             rounded-full bg-[#03a84e] shadow-lg border-none 
-             transition-all duration-200 hover:scale-105 hover:bg-gray-200 hover:shadow-xl"
+        className={`group fixed bottom-6 right-6 z-50 flex h-18 w-18 items-center justify-center 
+             rounded-full bg-[${chatbot?.colorCode || '#f00000'}] shadow-lg border-none 
+             transition-all duration-200 hover:scale-105 hover:bg-gray-200 hover:shadow-xl`}
       >
         <img
           src="/assets/chat-white.png"
@@ -245,7 +245,7 @@ export const ChatWidget = ({
             className="fixed bottom-27 right-6 sm:right-8 w-[90vw] sm:w-[400px] md:w-[450px] h-[600px] 
                         rounded-lg shadow-xl overflow-hidden z-40 bg-white border border-gray-200"
           >
-            <div className="px-6 py-4 bg-gradient-to-r from-[#03a84e] to-[#0a791e] flex flex-row items-center justify-between border-b gap-3">
+            <div className={`px-6 py-4 bg-[${chatbot?.colorCode || '#f00000'}] flex flex-row items-center justify-between border-b gap-3`}>
               <div className="flex items-center gap-3">
                 <div className="relative">
                   <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-white/50 bg-white">
@@ -260,9 +260,9 @@ export const ChatWidget = ({
                 </div>
                 <div className="flex flex-col">
                   <h2 className="text-white text-xl font-medium">
-                    Glick Roofing
+                    {chatbot?.title}
                   </h2>
-                  <p className="text-gray-200 text-sm ">Office Support</p>
+                  <p className="text-gray-200 text-sm ">{chatbot?.subTitle}</p>
                 </div>
               </div>
               <button
@@ -349,13 +349,13 @@ export const ChatWidget = ({
                         onKeyDown={handleKeyPress}
                         placeholder="Type your message..."
                         rows={1}
-                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#03a84e] focus:border-transparent resize-none overflow-hidden max-h-[200px]"
+                        className={`flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[${chatbot?.colorCode || '#f00000'}] focus:border-transparent resize-none overflow-hidden max-h-[200px]`}
                         style={{ minHeight: "44px" }}
                       />
                       <button
                         onClick={handleSendMessage}
                         disabled={!inputValue.trim()}
-                        className="px-4 py-3 bg-gradient-to-r from-[#03a84e] to-[#0a791e] text-white rounded-lg hover:from-[#028a42] hover:to-[#086b1a] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 h-[44px]"
+                        className={`px-4 py-3 bg-[${chatbot?.colorCode || '#f00000'}] text-white rounded-lg hover:from-[#028a42] hover:to-[#086b1a] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 h-[44px]`}
                       >
                         <Send size={18} />
                         <span className="font-medium">Send</span>

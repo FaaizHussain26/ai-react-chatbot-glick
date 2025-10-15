@@ -3,18 +3,11 @@
 import type React from "react";
 
 import { useState } from "react";
-import useSWR, { mutate as globalMutate } from "swr";
+import useSWR from "swr";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -32,7 +25,7 @@ import {
   deleteChatbot,
   type ChatbotDto,
 } from "@/utils/api/chatbot-api";
-import { getKnowledgeList } from "@/utils/api/knowledge-base-api";
+import ChatbotEmbedCode from "@/components/chatbot/chatbot-embed-code";
 
 export interface ChatbotCardData {
   id: string;
@@ -70,13 +63,6 @@ const ManageChatbotsPage: React.FC = () => {
       revalidateOnFocus: false,
     }
   );
-
-  const { data: mockKnowledgeBases } = useSWR(
-    "knowledge-list",
-    getKnowledgeList
-  );
-
-  console.log("Knowledge Bases:", mockKnowledgeBases);
 
   const chatbots: ChatbotCardData[] = (data ?? []).map(mapDtoToCard);
   const [editingBot, setEditingBot] = useState<ChatbotCardData | null>(null);
@@ -135,17 +121,6 @@ const ManageChatbotsPage: React.FC = () => {
     } else {
       setEditImage(null);
     }
-  };
-
-  const handleKnowledgeBaseAssign = (chatbotId: string) => {
-    // Local-only demo linkage; not persisted via API
-    // Using mutate with optimistic update for UI responsiveness
-    const current = data ?? [];
-    const updated = current.map((dto) => (dto._id === chatbotId ? dto : dto));
-    globalMutate("chatbots", updated, false);
-    toast.success("Knowledge Base Assigned", {
-      description: "The knowledge base has been linked to the chatbot.",
-    });
   };
 
   const handleDelete = async (id: string, name: string) => {
@@ -375,40 +350,9 @@ const ManageChatbotsPage: React.FC = () => {
 
             <div className="space-y-3">
               <div>
-                <Label
-                  htmlFor={`kb-${bot.id}`}
-                  className="text-sm text-muted-foreground mb-2 block"
-                >
-                  Assign Knowledge Base
-                </Label>
-                <Select
-                  value={bot.knowledgeBase || ""}
-                  onValueChange={() =>
-                    handleKnowledgeBaseAssign(bot.id /*, value */)
-                  }
-                >
-                  <SelectTrigger id={`kb-${bot.id}`}>
-                    <SelectValue placeholder="Select knowledge base" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mockKnowledgeBases?.map((kb) => (
-                      <SelectItem key={kb.id} value={kb.id}>
-                        {kb.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <ChatbotEmbedCode chatbotId={bot.id} kbId={bot.knowledgeBase} />
               </div>
 
-              {bot.knowledgeBase && (
-                <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded">
-                  Connected:{" "}
-                  {
-                    mockKnowledgeBases.find((kb) => kb.id === bot.knowledgeBase)
-                      ?.name
-                  }
-                </div>
-              )}
             </div>
           </Card>
         ))}
