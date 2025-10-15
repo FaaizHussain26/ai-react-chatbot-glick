@@ -194,7 +194,7 @@ const ManageChatbotsPage: React.FC = () => {
       )}
       {error && (
         <p className="text-sm text-destructive ml-1">
-          Failed to load chatbots. Please check NEXT_PUBLIC_API_URL.
+          Failed to load chatbots.
         </p>
       )}
 
