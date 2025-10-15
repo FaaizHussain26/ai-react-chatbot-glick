@@ -1,3 +1,7 @@
+"use client";
+
+import type React from "react";
+
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,20 +16,43 @@ import {
 import { FileText, Upload, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import { createKnowledge } from "@/utils/api/knowledge-base-api";
+import { ChatbotDto, getChatbots } from "@/utils/api/chatbot-api";
+import useSWR from "swr";
+import { ChatbotCardData } from "./manage-chatbots";
 
-const KnowledgeBasePage: React.FC = () => {
+export type KnowledgeBasePageProps = {
+  onCreated?: () => void;
+};
+
+const fetcher = async () => getChatbots();
+
+const KnowledgeBasePage: React.FC<KnowledgeBasePageProps> = ({ onCreated }) => {
+  const { data } = useSWR<ChatbotDto[]>("chatbots", fetcher);
   const [knowledgeBaseName, setKnowledgeBaseName] = useState("");
   const [selectedChatbot, setSelectedChatbot] = useState("");
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Map all required ChatbotCardData fields from ChatbotDto
+  const mapDtoToCard = (dto: ChatbotDto): ChatbotCardData => ({
+    id: dto._id,
+    name: dto.title,
+    subTitle: dto.subTitle ?? "",
+    color: "#10b981",
+    image: null,
+    knowledgeBase: null,
+  });
+  const chatbots: ChatbotCardData[] = (data ?? []).map(mapDtoToCard);
+
   // Mock chatbot data - replace with actual data from your backend
-  const chatbots = [
-    { id: "1", name: "Support Bot" },
-    { id: "2", name: "Sales Bot" },
-    { id: "3", name: "Technical Bot" },
-  ];
+  // const chatbots = [
+  //   { id: "1", name: "Support Bot" },
+  //   { id: "2", name: "Sales Bot" },
+  //   { id: "3", name: "Technical Bot" },
+  // ];
 
   const validateFile = (file: File): boolean => {
     const validTypes = [
@@ -106,7 +133,7 @@ const KnowledgeBasePage: React.FC = () => {
     return (bytes / (1024 * 1024)).toFixed(2) + " MB";
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!knowledgeBaseName || !selectedChatbot || !uploadedFile) {
       toast.error("Missing Information", {
         description: "Please fill in all fields before saving.",
@@ -114,9 +141,33 @@ const KnowledgeBasePage: React.FC = () => {
       return;
     }
 
-    toast.success("Knowledge Base Saved", {
-      description: "Your knowledge base has been saved successfully.",
-    });
+    try {
+      setIsSaving(true);
+      await createKnowledge({
+        title: knowledgeBaseName,
+        chatbotId: selectedChatbot,
+        file: uploadedFile,
+      });
+
+      toast.success("Knowledge Base Saved", {
+        description: "Your knowledge base has been saved successfully.",
+      });
+
+      // reset form
+      setKnowledgeBaseName("");
+      setSelectedChatbot("");
+      setUploadedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+
+      onCreated?.();
+    } catch (error: // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    any) {
+      toast.error("Failed to save", {
+        description: error?.message || "Please try again.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -169,15 +220,11 @@ const KnowledgeBasePage: React.FC = () => {
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              className={`
-                relative border-2 border-dashed rounded-lg p-6 
-                transition-all duration-200 cursor-pointer
-                ${
-                  isDragging
-                    ? "border-primary bg-primary/5 scale-[1.01]"
-                    : "border-border bg-muted/30 hover:bg-muted/50"
-                }
-              `}
+              className={`relative border-2 border-dashed rounded-lg p-6 transition-all duration-200 cursor-pointer ${
+                isDragging
+                  ? "border-primary bg-primary/5 scale-[1.01]"
+                  : "border-border bg-muted/30 hover:bg-muted/50"
+              }`}
             >
               <input
                 ref={fileInputRef}
@@ -191,10 +238,9 @@ const KnowledgeBasePage: React.FC = () => {
 
               <div className="flex flex-col items-center justify-center gap-3">
                 <div
-                  className={`
-                  w-16 h-16 rounded-full flex items-center justify-center transition-colors
-                  ${isDragging ? "bg-primary/20" : "bg-primary/10"}
-                `}
+                  className={`w-16 h-16 rounded-full flex items-center justify-center transition-colors ${
+                    isDragging ? "bg-primary/20" : "bg-primary/10"
+                  }`}
                 >
                   <Upload
                     className={`h-8 w-8 transition-colors ${
@@ -222,7 +268,7 @@ const KnowledgeBasePage: React.FC = () => {
 
           {/* File Preview */}
           {uploadedFile && (
-            <div className="border border-border rounded-lg p-4 bg-card animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="border border-border rounded-lg p-4 bg-card transition-opacity duration-300">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-primary/10 rounded flex items-center justify-center flex-shrink-0">
                   <FileText className="h-5 w-5 text-primary" />
@@ -252,8 +298,9 @@ const KnowledgeBasePage: React.FC = () => {
             onClick={handleSave}
             className="w-full gap-2 bg-[#03a84e] hover:bg-[#028a40]"
             size="lg"
+            disabled={isSaving}
           >
-            Create Knowledge Base
+            {isSaving ? "Saving..." : "Create Knowledge Base"}
           </Button>
         </div>
       </Card>

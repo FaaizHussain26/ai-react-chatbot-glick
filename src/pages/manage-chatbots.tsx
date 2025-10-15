@@ -32,8 +32,9 @@ import {
   deleteChatbot,
   type ChatbotDto,
 } from "@/utils/api/chatbot-api";
+import { getKnowledgeList } from "@/utils/api/knowledge-base-api";
 
-interface ChatbotCardData {
+export interface ChatbotCardData {
   id: string;
   name: string;
   subTitle: string;
@@ -43,11 +44,11 @@ interface ChatbotCardData {
   knowledgeBase: string | null;
 }
 
-const mockKnowledgeBases = [
-  { id: "kb1", name: "Product Documentation" },
-  { id: "kb2", name: "FAQ Database" },
-  { id: "kb3", name: "Sales Scripts" },
-];
+// const mockKnowledgeBases = [
+//   { id: "kb1", name: "Product Documentation" },
+//   { id: "kb2", name: "FAQ Database" },
+//   { id: "kb3", name: "Sales Scripts" },
+// ];
 
 const mapDtoToCard = (dto: ChatbotDto): ChatbotCardData => ({
   id: dto._id,
@@ -69,6 +70,13 @@ const ManageChatbotsPage: React.FC = () => {
       revalidateOnFocus: false,
     }
   );
+
+  const { data: mockKnowledgeBases } = useSWR(
+    "knowledge-list",
+    getKnowledgeList
+  );
+
+  console.log("Knowledge Bases:", mockKnowledgeBases);
 
   const chatbots: ChatbotCardData[] = (data ?? []).map(mapDtoToCard);
   const [editingBot, setEditingBot] = useState<ChatbotCardData | null>(null);
@@ -383,7 +391,7 @@ const ManageChatbotsPage: React.FC = () => {
                     <SelectValue placeholder="Select knowledge base" />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockKnowledgeBases.map((kb) => (
+                    {mockKnowledgeBases?.map((kb) => (
                       <SelectItem key={kb.id} value={kb.id}>
                         {kb.name}
                       </SelectItem>
