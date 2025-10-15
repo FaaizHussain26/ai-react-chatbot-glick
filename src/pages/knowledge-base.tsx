@@ -42,8 +42,8 @@ const KnowledgeBasePage: React.FC<KnowledgeBasePageProps> = ({ onCreated }) => {
     name: dto.title,
     subTitle: dto.subTitle ?? "",
     color: "#10b981",
-    image: null,
     knowledgeBase: null,
+    imagePath: null,
   });
   const chatbots: ChatbotCardData[] = (data ?? []).map(mapDtoToCard);
 
